@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ChangeEvent } from 'react';
-import { Baby, Check, ChevronsDown, ChevronsUp, Heart, MoveLeft, MoveRight, Pencil, Plus, Printer, Trash2, X, Layers3 } from 'lucide-react';
+import { ArrowDownUp, ArrowLeftRight, ArrowRight, Baby, Check, ChevronsDown, ChevronsUp, Clock3, FolderOpen, GitFork, Heart, Maximize2, MoveLeft, MoveRight, Pencil, Plus, Printer, RotateCcw, Trash2, Upload, X, ZoomIn, ZoomOut, Layers3 } from 'lucide-react';
 import type { LocalDatabaseClient } from '../db/database';
 import { parseGenogramArchive, serializeGenogramArchive } from '../backup/archive';
 import type { GenogramArchiveV1 } from '../backup/archive';
@@ -10,7 +10,7 @@ import ImportPanel from '../importer/ImportPanel';
 import { buildFamilyTree } from '../domain/buildFamilyTree';
 import { readLastGenogramId, readViewPreferences, writeLastGenogramId, writeViewPreferences } from './viewPreferences';
 import type { GenerationCohort, GenogramViewPreferences, ViewOrientation } from './viewPreferences';
-import { readGenogramAppearance, writeGenogramAppearance } from './appearance';
+import { filterGenogramAppearance, readGenogramAppearance, writeGenogramAppearance } from './appearance';
 import type { GenogramAppearance } from './appearance';
 import { createGenogramPrintSvg } from './printSvg';
 import type {
@@ -40,6 +40,7 @@ interface SavedGenogramsProps {
 
 export default function SavedGenograms({ databaseReady, database, refreshKey, fileMenuHost, viewMenuHost, caseMenuOpen, onCloseCaseMenu, onArchiveImported, onCaseDeleted }: SavedGenogramsProps) {
   const [genograms, setGenograms] = useState<GenogramSummary[]>([]);
+  const [genogramsLoaded, setGenogramsLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(() => readLastGenogramId());
   const [selected, setSelected] = useState<GenogramDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,7 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [newGenogramOpen, setNewGenogramOpen] = useState(false);
   const fileMenuRef = useRef<HTMLDetailsElement>(null);
+  const archiveFileInputRef = useRef<HTMLInputElement>(null);
   const pendingChanges = selectedId ? pendingChangeCounts[selectedId] ?? 0 : 0;
 
   function recordDatasetChange(genogramId: string) {
@@ -118,10 +120,14 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
       if (!active) return;
       setGenograms(items);
       const preferredId = readLastGenogramId();
-      setSelectedId(items.find((item) => item.id === preferredId)?.id ?? items[0]?.id ?? null);
+      setSelectedId(items.find((item) => item.id === preferredId)?.id ?? null);
+      setGenogramsLoaded(true);
       setError(null);
     }).catch(() => {
-      if (active) setError('Die lokal gespeicherten Fälle konnten nicht geladen werden.');
+      if (active) {
+        setGenogramsLoaded(true);
+        setError('Die lokal gespeicherten Fälle konnten nicht geladen werden.');
+      }
     });
     return () => { active = false; };
   }, [databaseReady, database, refreshKey]);
@@ -178,7 +184,7 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
       const portableArchive: GenogramArchiveV1 = {
         ...archive,
         formatVersion: 2,
-        appearance: readGenogramAppearance(selectedId),
+        appearance: filterGenogramAppearance(readGenogramAppearance(selectedId), new Set(archive.people.map((person) => person.id))),
       };
       const blob = new Blob([serializeGenogramArchive(portableArchive)], { type: 'application/json;charset=utf-8' });
       const objectUrl = URL.createObjectURL(blob);
@@ -243,7 +249,7 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
                 }} disabled={!databaseReady || !database || archiveBusy}><Plus size={14} /> Neues Genogramm anlegen</button>
                 <button type="button" onClick={() => { setExportDialogOpen(true); if (fileMenuRef.current) fileMenuRef.current.open = false; }} disabled={!databaseReady || !selectedId || archiveBusy}>JSON sichern</button>
                 <label className={!databaseReady || archiveBusy ? 'is-disabled' : ''}>JSON-Archiv öffnen
-                  <input type="file" accept=".json,application/json" onChange={handleArchiveFileChange} disabled={!databaseReady || archiveBusy} />
+                  <input ref={archiveFileInputRef} type="file" accept=".json,application/json" onChange={handleArchiveFileChange} disabled={!databaseReady || archiveBusy} />
                 </label>
               </div>
               <div className="file-menu-danger-row">
@@ -310,14 +316,28 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
 
       {!databaseReady && <p className="inline-notice">Die lokalen Fälle werden geladen, sobald der Speicher bereit ist.</p>}
       {error && <p className="inline-error" role="alert">{error}</p>}
-      {databaseReady && !error && genograms.length === 0 && (
-        <div className="empty-state new-genogram-empty-state">
-          <p>Noch keine gespeicherten Fälle. Erstelle ein Genogramm von Grund auf oder importiere vorhandene Familiendaten.</p>
-          <button type="button" className="primary-button" onClick={() => setNewGenogramOpen(true)} disabled={!database}><Plus size={15} /> Neues Genogramm</button>
-        </div>
+      {databaseReady && genogramsLoaded && !error && !selectedId && (
+        <main className="welcome-screen" aria-labelledby="welcome-title">
+          <section className="welcome-main">
+            <p className="eyebrow">Willkommen bei Cherware Genogramm</p>
+            <h1 id="welcome-title">Familienbeziehungen sichtbar machen.</h1>
+            <p className="welcome-intro">Erstelle ein Genogramm Schritt für Schritt oder öffne ein vorhandenes Archiv. Personen, Partnerschaften und Generationen lassen sich anschließend übersichtlich erkunden.</p>
+            <div className="welcome-actions">
+              <button type="button" className="primary-button" onClick={() => setNewGenogramOpen(true)} disabled={!database}><Plus size={16} /> Neues Genogramm erstellen</button>
+              <button type="button" className="secondary-button" onClick={() => archiveFileInputRef.current?.click()} disabled={!databaseReady || archiveBusy}><Upload size={15} /> JSON-Archiv öffnen</button>
+            </div>
+            <p className="welcome-local-note"><span className="welcome-local-mark" aria-hidden="true">✓</span><span><strong>Privat und lokal</strong>Fälle bleiben in diesem Browser. Mit einem JSON-Archiv kannst du sie sichern und auf ein anderes Gerät übertragen.</span></p>
+          </section>
+          <aside className="welcome-recent" aria-labelledby="welcome-recent-title">
+            <div className="welcome-recent-heading"><div><p className="eyebrow">Deine Fälle</p><h2 id="welcome-recent-title">Zuletzt verwendet</h2></div><FolderOpen size={19} aria-hidden="true" /></div>
+            {genograms.length > 0 ? <div className="welcome-case-list">{genograms.map((genogram) => <button type="button" className="welcome-case-item" key={genogram.id} onClick={() => setSelectedId(genogram.id)}>
+              <span className="welcome-case-copy"><strong>{genogram.title}</strong><small>{genogram.personCount} {genogram.personCount === 1 ? 'Person' : 'Personen'} · {formatDateTime(genogram.createdAt)}</small></span><ArrowRight size={16} aria-hidden="true" />
+            </button>)}</div> : <p className="welcome-no-cases">Hier erscheinen deine lokal gespeicherten Genogramme. Du kannst jederzeit ein neues anlegen oder ein Archiv öffnen.</p>}
+          </aside>
+        </main>
       )}
 
-      {genograms.length > 0 && (
+      {genograms.length > 0 && selectedId && (
         <div className="saved-layout">
           <div className="case-detail" aria-live="polite">
             {loading && (!selected || selected.summary.id !== selectedId) && <p className="empty-state">Fall wird geladen …</p>}
@@ -724,7 +744,7 @@ function GenogramView({
       canvas.removeEventListener('toggle', schedule, true);
       window.removeEventListener('resize', schedule);
     };
-  }, [orientation, zoom, wrapChildren, stackTerminalChildren, tree]);
+  }, [orientation, zoom, wrapChildren, stackTerminalChildren, generationGap, tree]);
 
   function setTreeExpansion(expanded: boolean, anchorId: string | null) {
     const root = treeRef.current;
@@ -1670,70 +1690,55 @@ function ViewMenu({
     <details className="header-menu view-menu" ref={menuRef}>
       <summary>Ansicht</summary>
       <div className="header-menu-panel view-menu-panel">
-        <p className="view-menu-heading">Darstellung</p>
-        <div className="orientation-options" role="group" aria-label="Darstellung">
-          <button type="button" aria-pressed={orientation === 'timeline'} onClick={() => onOrientationChange('timeline')}>Zeitachse</button>
-          <button type="button" aria-pressed={orientation === 'horizontal'} onClick={() => onOrientationChange('horizontal')}>Horizontal</button>
-          <button type="button" aria-pressed={orientation === 'vertical'} onClick={() => onOrientationChange('vertical')}>Vertikal</button>
-          <button type="button" aria-pressed={orientation === 'genogram'} onClick={() => onOrientationChange('genogram')}>Genogramm</button>
-        </div>
-        {orientation === 'vertical' && (
-          <>
-            <label className="wrap-children-option">
-              <input type="checkbox" checked={wrapChildren} onChange={(event) => onWrapChildrenChange(event.currentTarget.checked)} />
-              <span>Nachkommen kompakt auf mehrere Reihen verteilen</span>
-            </label>
-            <label className="wrap-children-option">
-              <input type="checkbox" checked={stackTerminalChildren} onChange={(event) => onStackTerminalChildrenChange(event.currentTarget.checked)} />
-              <span>Kinder ohne sichtbare Nachkommen nach Geburtsdatum untereinander anordnen</span>
-            </label>
-          </>
-        )}
-        {(orientation === 'genogram' || orientation === 'timeline') && (
-          <>
-            <label className="wrap-children-option">
-              <input type="checkbox" checked={hideLastNames} onChange={(event) => onHideLastNamesChange(event.currentTarget.checked)} />
-              <span>Nachnamen ausblenden</span>
-            </label>
-          </>
-        )}
-        {(orientation === 'genogram' || orientation === 'timeline') && (
-          <>
-            <label className="wrap-children-option">
-              <input type="checkbox" checked={showGenerationCohorts} onChange={(event) => onShowGenerationCohortsChange(event.currentTarget.checked)} />
-              <span>Generationen im Hintergrund anzeigen</span>
-            </label>
+        <section className="view-menu-section">
+          <p className="view-menu-heading">Darstellung</p>
+          <div className="orientation-options" role="group" aria-label="Darstellung">
+            <button type="button" aria-pressed={orientation === 'timeline'} onClick={() => onOrientationChange('timeline')}><Clock3 size={15} /><span>Zeitachse</span></button>
+            <button type="button" aria-pressed={orientation === 'horizontal'} onClick={() => onOrientationChange('horizontal')}><ArrowLeftRight size={15} /><span>Horizontal</span></button>
+            <button type="button" aria-pressed={orientation === 'vertical'} onClick={() => onOrientationChange('vertical')}><ArrowDownUp size={15} /><span>Vertikal</span></button>
+            <button type="button" aria-pressed={orientation === 'genogram'} onClick={() => onOrientationChange('genogram')}><GitFork size={15} /><span>Genogramm</span></button>
+          </div>
+          {orientation === 'vertical' && <div className="view-menu-options">
+            <label className="wrap-children-option"><input type="checkbox" checked={wrapChildren} onChange={(event) => onWrapChildrenChange(event.currentTarget.checked)} /><span>Nachkommen kompakt auf mehrere Reihen verteilen</span></label>
+            <label className="wrap-children-option"><input type="checkbox" checked={stackTerminalChildren} onChange={(event) => onStackTerminalChildrenChange(event.currentTarget.checked)} /><span>Kinder ohne sichtbare Nachkommen nach Geburtsdatum untereinander anordnen</span></label>
+          </div>}
+          {(orientation === 'genogram' || orientation === 'timeline') && <div className="view-menu-options">
+            <label className="wrap-children-option"><input type="checkbox" checked={hideLastNames} onChange={(event) => onHideLastNamesChange(event.currentTarget.checked)} /><span>Nachnamen ausblenden</span></label>
+            <label className="wrap-children-option"><input type="checkbox" checked={showGenerationCohorts} onChange={(event) => onShowGenerationCohortsChange(event.currentTarget.checked)} /><span>Generationen im Hintergrund anzeigen</span></label>
             <button type="button" className="generation-settings-button" onClick={onOpenGenerationDialog}><Layers3 size={14} /> Generationen bearbeiten …</button>
-          </>
-        )}
-        {orientation === 'genogram' && (
-          <>
-            <label className="generation-gap-control">
-              <span>Abstand zwischen Generationen <output>{generationGap} px</output></span>
-              <input type="range" min="30" max="180" step="5" value={generationGap} onChange={(event) => onGenerationGapChange(Number(event.currentTarget.value))} aria-label="Abstand zwischen Generationen" />
-            </label>
-          </>
-        )}
-        <p className="view-menu-heading">Zoom</p>
-        <div className="zoom-controls">
-          <button type="button" aria-label="Herauszoomen" title="Herauszoomen" disabled={zoomPercent <= 5} onClick={() => onZoomChange(Math.max(5, zoomPercent - 5))}>−</button>
-          <input type="range" min="5" max="125" step="5" value={zoomPercent} onChange={(event) => onZoomChange(Number(event.currentTarget.value))} aria-label="Zoomstufe" />
-          <button type="button" aria-label="Hineinzoomen" title="Hineinzoomen" disabled={zoomPercent >= 125} onClick={() => onZoomChange(Math.min(125, zoomPercent + 5))}>+</button>
-          <output>{zoomPercent}%</output>
-        </div>
-        <div className="zoom-actions">
-          <button type="button" onClick={onResetZoom}>100 %</button>
-          <button type="button" onClick={() => run(onFitWholeTree)}>Gesamtansicht</button>
-        </div>
-        <small className="view-menu-hint zoom-hint">{orientation === 'timeline' ? 'In der Zeitachse kannst du mit dem Scrollrad an der Mausposition zoomen und die Arbeitsfläche mit gedrückter Maustaste verschieben.' : 'Im Genogramm kannst du mit dem Scrollrad an der Mausposition zoomen.'} Gesamtansicht klappt alle Äste auf und passt den gesamten Baum ein.</small>
+          </div>}
+          {orientation === 'genogram' && <label className="generation-gap-control"><span>Abstand zwischen Generationen <output>{generationGap} px</output></span><input type="range" min="30" max="180" step="5" value={generationGap} onChange={(event) => onGenerationGapChange(Number(event.currentTarget.value))} aria-label="Abstand zwischen Generationen" /></label>}
+        </section>
+        <section className="view-menu-section">
+          <p className="view-menu-heading">Zoom</p>
+          <div className="zoom-controls">
+            <button type="button" aria-label="Herauszoomen" title="Herauszoomen" disabled={zoomPercent <= 5} onClick={() => onZoomChange(Math.max(5, zoomPercent - 5))}><ZoomOut size={15} /></button>
+            <input type="range" min="5" max="125" step="5" value={zoomPercent} onChange={(event) => onZoomChange(Number(event.currentTarget.value))} aria-label="Zoomstufe" />
+            <button type="button" aria-label="Hineinzoomen" title="Hineinzoomen" disabled={zoomPercent >= 125} onClick={() => onZoomChange(Math.min(125, zoomPercent + 5))}><ZoomIn size={15} /></button>
+            <output>{zoomPercent}%</output>
+          </div>
+          <div className="zoom-actions">
+            <button type="button" onClick={onResetZoom}><RotateCcw size={13} /> 100 %</button>
+            <button type="button" onClick={() => run(onFitWholeTree)}><Maximize2 size={13} /> Gesamtansicht</button>
+          </div>
+          <small className="view-menu-hint zoom-hint">{orientation === 'timeline' ? 'Mit dem Scrollrad an der Mausposition zoomen, mit gedrückter Maustaste verschieben.' : 'Im Genogramm kannst du mit dem Scrollrad an der Mausposition zoomen.'} Die Gesamtansicht passt alle Äste ein.</small>
+        </section>
         {orientation !== 'timeline' && <>
-        <p className="view-menu-heading">Gesamter Baum</p>
-        <button type="button" onClick={() => run(onExpandAll)}>Alles aufklappen</button>
-        <button type="button" onClick={() => run(onCollapseAll)}>Alles zuklappen</button>
-        <p className="view-menu-heading selection-heading">Markierter Knoten und Nachkommen</p>
-        <button type="button" disabled={!canApplyToSelection} onClick={() => run(onExpandFromSelection)}>Ab hier aufklappen</button>
-        <button type="button" disabled={!canApplyToSelection} onClick={() => run(onCollapseFromSelection)}>Ab hier zuklappen</button>
-        {!canApplyToSelection && <small className="view-menu-hint">Markiere zuerst einen Knoten mit dem Ziel-Symbol.</small>}
+          <section className="view-menu-section">
+            <p className="view-menu-heading">Gesamter Baum</p>
+            <div className="view-menu-action-grid">
+              <button type="button" onClick={() => run(onExpandAll)}><ChevronsDown size={14} /> Alles aufklappen</button>
+              <button type="button" onClick={() => run(onCollapseAll)}><ChevronsUp size={14} /> Alles zuklappen</button>
+            </div>
+          </section>
+          <section className="view-menu-section">
+            <p className="view-menu-heading">Markierter Knoten und Nachkommen</p>
+            <div className="view-menu-action-grid">
+              <button type="button" disabled={!canApplyToSelection} onClick={() => run(onExpandFromSelection)}><ChevronsDown size={14} /> Ab hier aufklappen</button>
+              <button type="button" disabled={!canApplyToSelection} onClick={() => run(onCollapseFromSelection)}><ChevronsUp size={14} /> Ab hier zuklappen</button>
+            </div>
+            {!canApplyToSelection && <small className="view-menu-hint selection-hint">Markiere zuerst einen Knoten in der Arbeitsfläche.</small>}
+          </section>
         </>}
       </div>
     </details>,

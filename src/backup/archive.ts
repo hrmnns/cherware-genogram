@@ -2,6 +2,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import schema from './genogram-archive.schema.json';
 import type { GenogramDetail } from '../domain/savedGenogram';
 import type { GenogramAppearance } from '../genograms/appearance';
+import { filterGenogramAppearance } from '../genograms/appearance';
 
 export interface GenogramArchiveV1 {
   format: 'cherware-genogram';
@@ -58,11 +59,6 @@ export function validateGenogramArchive(value: unknown): GenogramArchiveV1 {
     validateDatePair(person.birthDate, person.birthDatePrecision);
     validateDatePair(person.deathDate, person.deathDatePrecision);
   }
-  if (value.appearance) {
-    for (const id of [...Object.keys(value.appearance.personColors), ...Object.keys(value.appearance.branchColors)]) {
-      if (!personIds.has(id)) throw new Error('Gestaltungsdaten verweisen auf eine Person, die im Archiv fehlt.');
-    }
-  }
   const partnershipIds = new Set<string>();
   const partnershipPairs = new Set<string>();
   for (const partnership of value.partnerships) {
@@ -97,6 +93,7 @@ export function validateGenogramArchive(value: unknown): GenogramArchiveV1 {
   return {
     ...value,
     people: value.people.map((person) => ({ ...person, gender: person.gender ?? 'unknown' })),
+    ...(value.appearance ? { appearance: filterGenogramAppearance(value.appearance, personIds) } : {}),
   };
 }
 

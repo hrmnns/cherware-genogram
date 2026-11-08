@@ -21,6 +21,13 @@ export function writeGenogramAppearance(genogramId: string, appearance: Genogram
   try { localStorage.setItem(key(genogramId), JSON.stringify(appearance)); } catch { /* Local storage may be unavailable. */ }
 }
 
+export function filterGenogramAppearance(appearance: GenogramAppearance, personIds: ReadonlySet<string>): GenogramAppearance {
+  const filter = (colors: Record<string, string>) => Object.fromEntries(
+    Object.entries(colors).filter(([id]) => personIds.has(id)),
+  );
+  return { personColors: filter(appearance.personColors), branchColors: filter(appearance.branchColors) };
+}
+
 function validColorMap(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value)

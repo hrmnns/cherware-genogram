@@ -479,6 +479,24 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
 
+## 2026-11-08 - Ansichtsmenü überarbeiten
+
+**Umsetzung:** Das Ansichtsmenü ist in Darstellung, Zoom, Gesamtbaum und markierten Zweig gegliedert. Darstellungsarten und Zoomaktionen haben klare Symbole und Zustände; Aufklappaktionen sind als kompakte Schaltflächen angeordnet. Menügröße und Bedienung wurden für schmale Bildschirme angepasst.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Begrüßungs- und Startübersicht
+
+**Umsetzung:** Wenn kein zuletzt geöffneter Fall vorhanden ist, zeigt die App eine Startseite mit kurzer Erklärung, direktem Einstieg zum Erstellen eines Genogramms oder Öffnen eines JSON-Archivs sowie einer Liste lokal gespeicherter Fälle. Ein gültiger zuletzt geöffneter Fall wird weiterhin direkt geladen. Die Startseite erklärt außerdem die lokale Speicherung und Archivübertragung.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Verwaiste Gestaltungsdaten in Archiven tolerieren
+
+**Korrektur:** Beim Export und bei der Archivprüfung werden Farbzuordnungen zu inzwischen gelöschten Personen herausgefiltert. Solche veralteten Einträge blockieren den Import nicht mehr; gültige Gestaltungsdaten bleiben erhalten.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
 ## 2026-11-08 - Gestaltung in JSON-Archiven sichern
 
 **Umsetzung:** JSON-Export v2 enthält optionale Personenfarben und Zweigfarben. Die Archivvalidierung prüft Farbwerte und Personenverweise; Archive v1 ohne Gestaltungsdaten bleiben importierbar. Beim Import werden die Farbzuordnungen anhand der neu erzeugten Personen-IDs wiederhergestellt.
@@ -630,5 +648,23 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 ## 2026-11-08 - Kinderreihenfolge anpassen
 
 **Umsetzung:** Im Knoten-Kontextmenü können Geschwisterknoten jeweils eine Position nach links oder rechts verschoben werden. Die gewählte Reihenfolge wird pro Fall lokal als Ansichtspräferenz gespeichert und in Genogramm, Zeitachse, Listenansichten und Drucklayout berücksichtigt. Die Familienbeziehungen selbst werden dabei nicht verändert.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Verbindungslinien beim Generationenabstand aktualisieren
+
+**Korrektur:** Die Connector-Neuberechnung reagiert jetzt explizit auf Änderungen des Generationenabstands. So werden die Eltern-Kind-Linien im Genogramm direkt nach der Layoutänderung an die neuen Kartenpositionen angepasst.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - About-Fenster und Commit-Buildnummer
+
+**Umsetzung:** Die Kopfzeile enthält ein About-Fenster mit Kurzbeschreibung, lokalen Speicher-/Sicherungshinweisen und Versionsanzeige. Die Buildversion wird aus `package.json`-Major/Minor und der Anzahl der Git-Commits ermittelt; GitHub Pages lädt dafür die vollständige Historie. Bei fehlenden Git-Metadaten wird die Paketversion verwendet.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Menü-Hoverflächen bündig ausrichten
+
+**Korrektur:** Die Hover- und Fokusflächen der Datei-, Ansicht- und Über-Menüpunkte füllen jetzt jeweils bündig ihre gesamte Höhe aus. Innenabstände und Rundungen folgen der gemeinsamen Menükontur; die Trenner bleiben konsistent.
 
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
