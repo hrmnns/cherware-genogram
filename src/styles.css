@@ -473,7 +473,7 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .hamburger-button:hover, .hamburger-button:focus-visible { border-color: #88ad97; background: #f3f8f4; outline: 2px solid #dcebe1; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 .topbar-status { margin-left: 9px; }
-.app-menubar { display: flex; min-height: 36px; align-items: stretch; overflow: hidden; border: 1px solid #d7dfd8; border-radius: 8px; background: #fff; }
+.app-menubar { display: flex; min-height: 36px; align-items: stretch; border: 1px solid #d7dfd8; border-radius: 8px; background: #fff; }
 .about-menu-button { display: inline-flex; min-height: 100%; align-items: center; justify-content: center; gap: 6px; margin: 0; padding: 0 10px; border: 0; border-left: 1px solid #e7ebe6; border-radius: 0 7px 7px 0; background: transparent; color: #52685c; cursor: pointer; font-size: 11px; font-weight: 600; }
 .about-menu-button:hover, .about-menu-button:focus-visible { background: #f2f7f3; color: #286b58; outline: none; }
 .header-file-menu-host, .header-view-menu-host { display: flex; align-items: stretch; }
