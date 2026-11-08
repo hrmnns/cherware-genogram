@@ -26,6 +26,7 @@ export interface GenogramViewPreferences {
   showGenerationCohorts: boolean;
   generationCohorts: GenerationCohort[];
   collapsedGenogramNodes: string[];
+  childOrder: Record<string, string[]>;
   scroll: Record<ViewOrientation, { left: number; top: number }>;
 }
 
@@ -42,6 +43,7 @@ const defaults: GenogramViewPreferences = {
   showGenerationCohorts: false,
   generationCohorts: defaultGenerationCohorts,
   collapsedGenogramNodes: [],
+  childOrder: {},
   scroll: {
     timeline: { left: 0, top: 0 },
     horizontal: { left: 0, top: 0 },
@@ -80,6 +82,7 @@ export function readViewPreferences(genogramId: string): GenogramViewPreferences
       generationCohorts: validCohorts(value.generationCohorts),
       collapsedGenogramNodes: Array.isArray(value.collapsedGenogramNodes)
         ? value.collapsedGenogramNodes.filter((id): id is string => typeof id === 'string') : [],
+      childOrder: validChildOrder(value.childOrder),
       scroll: {
         timeline: validScroll(scroll.timeline),
         horizontal: validScroll(scroll.horizontal),
@@ -106,6 +109,7 @@ function defaultPreferences(): GenogramViewPreferences {
     zoom: { ...defaults.zoom },
     generationCohorts: defaults.generationCohorts.map((cohort) => ({ ...cohort })),
     collapsedGenogramNodes: [],
+    childOrder: {},
     scroll: {
       timeline: { ...defaults.scroll.timeline },
       horizontal: { ...defaults.scroll.horizontal },
@@ -113,6 +117,15 @@ function defaultPreferences(): GenogramViewPreferences {
       genogram: { ...defaults.scroll.genogram },
     },
   };
+}
+
+function validChildOrder(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([groupId, ids]) => {
+    if (groupId.length > 128 || !Array.isArray(ids)) return [];
+    const validIds = [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length <= 128))];
+    return validIds.length ? [[groupId, validIds]] : [];
+  }));
 }
 
 function validZoom(value: unknown): number {

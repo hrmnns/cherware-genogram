@@ -79,14 +79,15 @@ export function createGenogramPrintSvg(
     const width = groupWidths.get(group) ?? cardWidth;
     layouts.push({ group, x, y });
     const branchColor = group.partners.map((person) => appearance.branchColors[person.id]).find(Boolean);
-    if (branchColor && group.children.length) {
-      const childrenTop = y + cardHeight + generationGap;
-      const childrenHeight = Math.max(...group.children.map(branchHeight));
+    if (branchColor) {
+      const branchBottom = group.children.length
+        ? y + cardHeight + generationGap + Math.max(...group.children.map(branchHeight))
+        : y + cardHeight;
       branchRegions.push({
         x: x - branchFramePadding,
-        y: childrenTop - branchFramePadding,
+        y: y - branchFramePadding,
         width: width + branchFramePadding * 2,
-        height: childrenHeight + branchFramePadding * 2,
+        height: branchBottom - y + branchFramePadding * 2,
         color: branchColor,
       });
     }

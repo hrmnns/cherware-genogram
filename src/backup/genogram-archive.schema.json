@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:cherware:genogram:archive:1",
-  "title": "Cherware Genogram Archive v1",
-  "description": "A portable, single-genogram archive containing its people and relationship records.",
+  "$id": "urn:cherware:genogram:archive:2",
+  "title": "Cherware Genogram Archive v1/v2",
+  "description": "A portable, single-genogram archive containing people, relationships, and optional appearance settings.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "formatVersion", "exportedAt", "genogram", "people", "partnerships", "parentChildLinks"],
   "properties": {
     "format": { "const": "cherware-genogram" },
-    "formatVersion": { "const": 1 },
+    "formatVersion": { "enum": [1, 2] },
     "exportedAt": { "type": "string", "minLength": 1, "maxLength": 64 },
     "genogram": {
       "type": "object",
@@ -56,6 +56,15 @@
         }
       }
     },
+    "appearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["personColors", "branchColors"],
+      "properties": {
+        "personColors": { "$ref": "#/$defs/colorMap" },
+        "branchColors": { "$ref": "#/$defs/colorMap" }
+      }
+    },
     "parentChildLinks": {
       "type": "array",
       "maxItems": 200000,
@@ -74,6 +83,12 @@
   },
   "$defs": {
     "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "colorMap": {
+      "type": "object",
+      "maxProperties": 100000,
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+    },
     "date": { "type": ["string", "null"], "pattern": "^(\\d{4}|\\d{4}-\\d{2}|\\d{4}-\\d{2}-\\d{2})$" },
     "precision": { "type": ["string", "null"], "enum": ["day", "month", "year", null] }
   }

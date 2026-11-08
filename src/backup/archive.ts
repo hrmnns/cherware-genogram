@@ -1,15 +1,17 @@
 import Ajv2020 from 'ajv/dist/2020.js';
 import schema from './genogram-archive.schema.json';
 import type { GenogramDetail } from '../domain/savedGenogram';
+import type { GenogramAppearance } from '../genograms/appearance';
 
 export interface GenogramArchiveV1 {
   format: 'cherware-genogram';
-  formatVersion: 1;
+  formatVersion: 1 | 2;
   exportedAt: string;
   genogram: { title: string; createdAt: string; sourceFormat: string };
   people: GenogramDetail['people'];
   partnerships: GenogramDetail['partnerships'];
   parentChildLinks: GenogramDetail['parentChildLinks'];
+  appearance?: GenogramAppearance;
 }
 
 const validator = new Ajv2020({ allErrors: true, strict: true }).compile<GenogramArchiveV1>(schema);
@@ -42,7 +44,7 @@ export function parseGenogramArchive(text: string): GenogramArchiveV1 {
 
 export function validateGenogramArchive(value: unknown): GenogramArchiveV1 {
   if (!validator(value)) {
-    throw new Error('Die Datei entspricht nicht dem Genogramm-Archivformat v1.');
+    throw new Error('Die Datei entspricht nicht dem Genogramm-Archivformat v1 oder v2.');
   }
   if (!value.genogram.title.trim() || !value.genogram.sourceFormat.trim()
     || !isIsoDateTime(value.exportedAt) || !isIsoDateTime(value.genogram.createdAt)) {
@@ -55,6 +57,11 @@ export function validateGenogramArchive(value: unknown): GenogramArchiveV1 {
     if (!person.name.trim()) throw new Error('Ein Personenname im Archiv ist leer.');
     validateDatePair(person.birthDate, person.birthDatePrecision);
     validateDatePair(person.deathDate, person.deathDatePrecision);
+  }
+  if (value.appearance) {
+    for (const id of [...Object.keys(value.appearance.personColors), ...Object.keys(value.appearance.branchColors)]) {
+      if (!personIds.has(id)) throw new Error('Gestaltungsdaten verweisen auf eine Person, die im Archiv fehlt.');
+    }
   }
   const partnershipIds = new Set<string>();
   const partnershipPairs = new Set<string>();

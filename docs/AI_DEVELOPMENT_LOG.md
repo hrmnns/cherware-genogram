@@ -479,6 +479,24 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
 
+## 2026-11-08 - Gestaltung in JSON-Archiven sichern
+
+**Umsetzung:** JSON-Export v2 enthält optionale Personenfarben und Zweigfarben. Die Archivvalidierung prüft Farbwerte und Personenverweise; Archive v1 ohne Gestaltungsdaten bleiben importierbar. Beim Import werden die Farbzuordnungen anhand der neu erzeugten Personen-IDs wiederhergestellt.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Zweighervorhebung um markierten Knoten erweitern
+
+**Umsetzung:** Die farbige Fläche und Umrandung eines Zweigs umfasst nun auch den markierten Knoten (in der Genogramm-Ansicht einschließlich seiner Partnerschaftsgruppe) statt erst bei den Kindknoten zu beginnen. Das gilt ebenso für die Zeitachse und den PDF-Export. Die Option im Gestalten-Dialog benennt den erweiterten Umfang eindeutig.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Partner gezielt hinzufügen
+
+**Umsetzung:** Das Knoten-Kontextmenü bietet „Partner hinzufügen“ nur für Personen ohne bestehende Partnerschaft an. Die Prüfung erfolgt zusätzlich im Datenbank-Worker, sodass auch über parallele oder direkte Aufrufe keine zweite Partnerschaft für dieselbe Person entsteht.
+
+**Überprüfung:** Produktionsbuild erfolgreich.
+
 ## 2026-11-08 - Erste Genogramm-Gestaltung
 
 **Umsetzung:** Im Knoten-Kontextmenü gibt es nun „Gestaltung …“. Eine kompakte Farbpalette weist einer Person einen dezenten Farbton zu, optional auch allen über Eltern-Kind-Verknüpfungen erreichbaren Nachkommen. Zusätzlich lässt sich der Kindzweig farblich hinterlegen und umranden. Einstellungen werden je Fall lokal im Browser gespeichert und verändern keine Familiendaten.
@@ -608,3 +626,9 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
 
 **Überprüfung:** Produktionsbuild erfolgreich.
+
+## 2026-11-08 - Kinderreihenfolge anpassen
+
+**Umsetzung:** Im Knoten-Kontextmenü können Geschwisterknoten jeweils eine Position nach links oder rechts verschoben werden. Die gewählte Reihenfolge wird pro Fall lokal als Ansichtspräferenz gespeichert und in Genogramm, Zeitachse, Listenansichten und Drucklayout berücksichtigt. Die Familienbeziehungen selbst werden dabei nicht verändert.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.

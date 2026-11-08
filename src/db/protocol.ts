@@ -37,7 +37,7 @@ export type DatabaseWorkerMessage =
   | { type: 'family-member-added'; requestId: string }
   | { type: 'genogram-created'; requestId: string; genogramId: string }
   | { type: 'genogram-exported'; requestId: string; archive: GenogramArchiveV1 | null }
-  | { type: 'genogram-imported'; requestId: string; genogramId: string }
+  | { type: 'genogram-imported'; requestId: string; genogramId: string; personIdMap: Record<string, string> }
   | { type: 'family-branch-deleted'; requestId: string }
   | { type: 'genogram-deleted'; requestId: string }
   | { type: 'query-failed'; requestId: string };

@@ -12,7 +12,7 @@ export interface LocalDatabaseClient {
   addFamilyMember(input: AddFamilyMemberInput): Promise<void>;
   createGenogram(input: NewGenogramInput): Promise<string>;
   exportGenogram(genogramId: string): Promise<GenogramArchiveV1 | null>;
-  importGenogramArchive(archive: GenogramArchiveV1): Promise<string>;
+  importGenogramArchive(archive: GenogramArchiveV1): Promise<{ genogramId: string; personIdMap: Record<string, string> }>;
   deleteFamilyBranch(genogramId: string, rootPersonIds: string[]): Promise<void>;
   deleteGenogram(genogramId: string): Promise<void>;
   close(): void;
@@ -105,7 +105,7 @@ export function openLocalDatabase(
     importGenogramArchive(archive) {
       return sendRequest({ type: 'import-genogram', archive }).then((message) => {
         if (message.type !== 'genogram-imported') throw new Error('Unexpected database response');
-        return message.genogramId;
+        return { genogramId: message.genogramId, personIdMap: message.personIdMap };
       });
     },
     deleteFamilyBranch(genogramId, rootPersonIds) {

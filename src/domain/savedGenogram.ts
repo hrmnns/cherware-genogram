@@ -105,6 +105,7 @@ export interface FamilyTreePerson {
 
 export interface FamilyTreeGroup {
   id: string;
+  hasCustomChildOrder?: boolean;
   partnership: GenogramPartnership | null;
   partners: GenogramPerson[];
   children: FamilyTreePerson[];

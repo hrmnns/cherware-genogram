@@ -49,8 +49,8 @@ workerScope.addEventListener('message', (event: MessageEvent<DatabaseRequest>) =
       });
     } else if (request.type === 'import-genogram') {
       const archive = validateGenogramArchive(request.archive);
-      const genogramId = importGenogramArchive(database, archive);
-      notify({ type: 'genogram-imported', requestId: request.requestId, genogramId });
+      const result = importGenogramArchive(database, archive);
+      notify({ type: 'genogram-imported', requestId: request.requestId, ...result });
     } else if (request.type === 'delete-family-branch') {
       deleteFamilyBranch(database, request.genogramId, request.rootPersonIds);
       notify({ type: 'family-branch-deleted', requestId: request.requestId });
@@ -520,10 +520,9 @@ function addFamilyMember(
     throw new Error('Genogram not found');
   }
   if (relationship.kind === 'partner' && Number(db.selectValue(
-    `SELECT COUNT(*) FROM partnership WHERE genogram_id = ?
-      AND ((person_a_id = ? AND person_b_id = ?) OR (person_a_id = ? AND person_b_id = ?))`,
-    [input.genogramId, relationship.partnerId, person.id, person.id, relationship.partnerId],
-  )) !== 0) throw new Error('Partnership already exists');
+    'SELECT COUNT(*) FROM partnership WHERE genogram_id = ? AND (person_a_id = ? OR person_b_id = ?)',
+    [input.genogramId, relationship.partnerId, relationship.partnerId],
+  )) !== 0) throw new Error('Person already has a partner');
 
   db.exec('BEGIN IMMEDIATE;');
   try {
@@ -562,7 +561,7 @@ function addFamilyMember(
 function importGenogramArchive(
   connection: NonNullable<typeof database>,
   archive: ReturnType<typeof validateGenogramArchive>,
-): string {
+): { genogramId: string; personIdMap: Record<string, string> } {
   const { db } = connection;
   const genogramId = crypto.randomUUID();
   const personIds = new Map(archive.people.map((person) => [person.id, crypto.randomUUID()]));
@@ -616,7 +615,7 @@ function importGenogramArchive(
       parentChildInsert.reset();
     }
     db.exec('COMMIT;');
-    return genogramId;
+    return { genogramId, personIdMap: Object.fromEntries(personIds) };
   } catch (error) {
     db.exec('ROLLBACK;');
     throw error;
