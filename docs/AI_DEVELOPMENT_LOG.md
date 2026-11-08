@@ -593,4 +593,18 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 
 **PDF-Ergänzung:** Wenn die Generationen-Hervorhebung in der Ansicht aktiviert ist, übernimmt der vektorbasierte Druckexport die Farbtönung und Bezeichnung an den Personen sowie die Generationenliste mit Zeiträumen in die PDF-Legende.
 
+## 2026-11-08 - Geburtsbasierte Zeitachsenansicht
+
+**Umsetzung:** Die Darstellungsoption „Zeitachse“ ordnet Personen nach Geburtsjahr an einer vertikalen Jahresachse an und zeichnet Partnerschafts- und Elternverbindungen. Personen ohne Geburtsjahr erscheinen in einem separat markierten Bereich. Die bisherige Genogramm-Ansicht bleibt als unabhängige Option erhalten; Darstellung, Zoom und Scrollposition werden pro Fall und Ansicht gespeichert.
+
+**Ausrichtung:** Die Zeitachse läuft chronologisch von älteren Jahrgängen oben zu jüngeren unten, damit Eltern-Kind-Verbindungen der üblichen Leserichtung im Genogramm folgen.
+
+**Verbindungsdarstellung:** Gemeinsam zugeordnete Eltern werden im Zeitstrahl als gemeinsamer Beziehungsausgangspunkt behandelt; pro Kind wird nur eine Elternverbindung gezeichnet statt einer Linie je Elternzuordnung.
+
+**Generationen:** Die optionalen Generationseinstellungen gelten jetzt auch im Zeitstrahl. Sichtbare Geburtsjahresbereiche erhalten dezente, beschriftete Hintergrundbänder; der bestehende Schalter und Dialog steuern sie.
+
+**Bedienung und Gestaltung:** Auch im Zeitstrahl kann die Arbeitsfläche per Mausrad gezoomt und durch Ziehen verschoben werden. Knoten lassen sich markieren und per Kontextmenü bearbeiten, gestalten, erweitern oder löschen; Ein- und Ausklappbefehle sind dort nicht vorgesehen. Personenfarben und farbig umrahmte Kindzweige werden in dieser Ansicht ebenfalls dargestellt.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
 **Überprüfung:** Produktionsbuild erfolgreich.

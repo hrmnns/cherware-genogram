@@ -460,8 +460,9 @@ function GenogramView({
   const panRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number; dragged: boolean } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const suppressPanClickRef = useRef(false);
-  const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number; nodeId?: string; personId?: string; parentIds?: string[] } | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number; nodeId?: string; personId?: string; parentIds?: string[]; deleteRootIds?: string[]; timeline?: boolean } | null>(null);
   const canvasContextMenuRef = useRef<HTMLDivElement>(null);
+  const [contextEditGroup, setContextEditGroup] = useState<FamilyTreeGroup | null>(null);
   const [addingMember, setAddingMember] = useState<{ kind: 'child' | 'partner'; personId?: string; parentIds: string[]; nodeId: string } | null>(null);
   const [branchDeleteTarget, setBranchDeleteTarget] = useState<{ rootPersonIds: string[]; label: string; peopleCount: number; descendantCount: number; partnershipsCount: number; linksCount: number } | null>(null);
   const [branchDeleteBusy, setBranchDeleteBusy] = useState(false);
@@ -740,7 +741,7 @@ function GenogramView({
   }
 
   function zoomWithWheel(event: React.WheelEvent<HTMLDivElement>) {
-    if (orientation !== 'genogram' || event.ctrlKey || event.metaKey) return;
+    if ((orientation !== 'genogram' && orientation !== 'timeline') || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
     const viewport = treeRef.current;
     if (!viewport) return;
@@ -763,7 +764,7 @@ function GenogramView({
   }
 
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
-    if (orientation !== 'genogram' || event.button !== 0 || event.pointerType === 'touch') return;
+    if ((orientation !== 'genogram' && orientation !== 'timeline') || event.button !== 0 || event.pointerType === 'touch') return;
     if (event.target instanceof Element && event.target.closest('a, input, select, textarea, .genogram-legend')) return;
     const viewport = treeRef.current;
     if (!viewport) return;
@@ -890,7 +891,7 @@ function GenogramView({
               >
                 {connectors.paths.map((path, index) => <path key={index} d={path.d} className={`parentage-${path.relationshipType ?? 'unspecified'}`} />)}
               </svg>}
-              {tree.map((group) => <GenogramGroupView key={group.id} group={group} hideLastNames={hideLastNames} collapsedNodes={collapsedGenogramNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={(id, open) => {
+              {tree.map((group) => <GenogramGroupView key={group.id} group={group} hideLastNames={hideLastNames} collapsedNodes={collapsedGenogramNodes} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={(id, open) => {
                 setCollapsedGenogramNodes((current) => open ? current.filter((nodeId) => nodeId !== id) : current.includes(id) ? current : [...current, id]);
               }} genogramId={genogram.summary.id} database={database} onDataChanged={onDataChanged} />)}
               <div className="genogram-legend" aria-label="Legende">
@@ -914,6 +915,20 @@ function GenogramView({
           {canvasContextMenu && createPortal(
             <div className="canvas-context-menu" role="menu" aria-label={canvasContextMenu.nodeId ? 'Knoten' : 'Genogramm-Arbeitsfläche'} ref={canvasContextMenuRef} style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}>
               <div className="canvas-context-menu-heading">{canvasContextMenu.nodeId ? 'Knoten' : 'Arbeitsfläche'}</div>
+              {canvasContextMenu.nodeId && canvasContextMenu.personId && <button type="button" className="canvas-context-item" role="menuitem" onClick={() => {
+                const findGroup = (groups: FamilyTreeGroup[], id: string): FamilyTreeGroup | null => {
+                  for (const group of groups) {
+                    if (group.id === id) return group;
+                    const nested = findGroup(group.children.flatMap((child) => child.unions), id);
+                    if (nested) return nested;
+                  }
+                  return null;
+                };
+                const person = genogram.people.find((item) => item.id === canvasContextMenu.personId);
+                const group = findGroup(tree, canvasContextMenu.nodeId!) ?? (person ? { id: person.id, partnership: null, partners: [person], children: [] } : null);
+                setContextEditGroup(group);
+                setCanvasContextMenu(null);
+              }}><span className="canvas-context-icon" aria-hidden="true"><Pencil size={16} strokeWidth={1.8} /></span><span>Bearbeiten</span></button>}
               {canvasContextMenu.nodeId && canvasContextMenu.personId && <>
                 <button type="button" className="canvas-context-item" role="menuitem" onClick={() => { setAddingMember({ kind: 'child', parentIds: canvasContextMenu.parentIds ?? [], nodeId: canvasContextMenu.nodeId! }); setCanvasContextMenu(null); }}><span className="canvas-context-icon" aria-hidden="true"><Baby size={16} strokeWidth={1.8} /></span><span>Kind hinzufügen</span></button>
                 <span className="canvas-context-menu-separator" />
@@ -927,7 +942,7 @@ function GenogramView({
               {canvasContextMenu.nodeId && canvasContextMenu.parentIds && <>
                 <span className="canvas-context-menu-separator" />
                 <button type="button" className="canvas-context-item is-destructive" role="menuitem" onClick={() => {
-                  const rootPersonIds = canvasContextMenu.parentIds ?? [];
+                  const rootPersonIds = canvasContextMenu.deleteRootIds ?? canvasContextMenu.parentIds ?? [];
                   const counts = branchDeletionCounts(genogram, rootPersonIds);
                   const label = rootPersonIds.map((id) => genogram.people.find((person) => person.id === id)).filter((person): person is GenogramPerson => Boolean(person)).map(displayName).join(' + ');
                   setBranchDeleteTarget({ rootPersonIds, label, descendantCount: Math.max(0, counts.peopleCount - rootPersonIds.length), ...counts });
@@ -994,8 +1009,61 @@ function GenogramView({
             onCancel={() => setAppearanceTarget(null)}
             onApply={applyAppearance}
           />}
+          {contextEditGroup && <FamilyNodeEditor group={contextEditGroup} genogramId={genogram.summary.id} database={database} onCancel={() => setContextEditGroup(null)} onSaved={() => { setContextEditGroup(null); onDataChanged(); }} />}
           </>
-        ) : <div className="family-tree" aria-label="Aufklappbare Familienstruktur" ref={treeRef}>
+        ) : orientation === 'timeline' ? <div className={`family-tree birth-timeline-viewport${isPanning ? ' is-panning' : ''}`} aria-label="Geburtsbasierte Zeitachse" ref={treeRef}
+          onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}
+          onWheel={zoomWithWheel}
+          onClickCapture={(event) => {
+            if (!suppressPanClickRef.current) return;
+            suppressPanClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}>
+          <div className="birth-timeline-canvas" style={{ zoom }} ref={canvasRef}>
+            <BirthTimelineView tree={tree} appearance={appearance} hideLastNames={hideLastNames} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} onOpenContextMenu={(menu) => setCanvasContextMenu({ ...menu, timeline: true })} genogramId={genogram.summary.id} database={database} onDataChanged={onDataChanged} />
+          </div>
+          {canvasContextMenu?.timeline && createPortal(
+            <div className="canvas-context-menu" role="menu" aria-label="Knoten" ref={canvasContextMenuRef} style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}>
+              <div className="canvas-context-menu-heading">Knoten</div>
+              {canvasContextMenu.personId && <button type="button" className="canvas-context-item" role="menuitem" onClick={() => {
+                const findGroup = (groups: FamilyTreeGroup[], id: string): FamilyTreeGroup | null => {
+                  for (const group of groups) {
+                    if (group.id === id) return group;
+                    const nested = findGroup(group.children.flatMap((child) => child.unions), id);
+                    if (nested) return nested;
+                  }
+                  return null;
+                };
+                const person = genogram.people.find((item) => item.id === canvasContextMenu.personId);
+                const group = canvasContextMenu.nodeId ? findGroup(tree, canvasContextMenu.nodeId) : null;
+                setContextEditGroup(group ?? (person ? { id: person.id, partnership: null, partners: [person], children: [] } : null));
+                setCanvasContextMenu(null);
+              }}><span className="canvas-context-icon" aria-hidden="true"><Pencil size={16} strokeWidth={1.8} /></span><span>Bearbeiten</span></button>}
+              {canvasContextMenu.personId && <>
+                <button type="button" className="canvas-context-item" role="menuitem" onClick={() => { setAddingMember({ kind: 'child', parentIds: canvasContextMenu.parentIds ?? [canvasContextMenu.personId!], nodeId: canvasContextMenu.nodeId ?? `solo-${canvasContextMenu.personId}` }); setCanvasContextMenu(null); }}><span className="canvas-context-icon" aria-hidden="true"><Baby size={16} strokeWidth={1.8} /></span><span>Kind hinzufügen</span></button>
+                <span className="canvas-context-menu-separator" />
+                <button type="button" className="canvas-context-item" role="menuitem" onClick={() => { setAppearanceTarget(canvasContextMenu.personId!); setCanvasContextMenu(null); }}><span className="canvas-context-icon appearance-menu-swatch" aria-hidden="true" style={{ background: appearance.personColors[canvasContextMenu.personId] ?? '#ffffff' }} /><span>Gestaltung …</span></button>
+              </>}
+              {canvasContextMenu.parentIds && <>
+                <span className="canvas-context-menu-separator" />
+                <button type="button" className="canvas-context-item is-destructive" role="menuitem" onClick={() => {
+                  const rootPersonIds = canvasContextMenu.parentIds ?? [];
+                  const counts = branchDeletionCounts(genogram, rootPersonIds);
+                  const label = rootPersonIds.map((id) => genogram.people.find((person) => person.id === id)).filter((person): person is GenogramPerson => Boolean(person)).map(displayName).join(' + ');
+                  setBranchDeleteTarget({ rootPersonIds, label, descendantCount: Math.max(0, counts.peopleCount - rootPersonIds.length), ...counts });
+                  setBranchDeleteError(null);
+                  setCanvasContextMenu(null);
+                }}><span className="canvas-context-icon" aria-hidden="true"><Trash2 size={16} strokeWidth={1.8} /></span><span>Knoten und Kindknoten löschen</span></button>
+              </>}
+            </div>,
+            document.body,
+          )}
+          {addingMember && <AddFamilyMemberDialog genogramId={genogram.summary.id} kind={addingMember.kind} partner={null} parents={addingMember.parentIds.map((id) => genogram.people.find((person) => person.id === id)).filter((person): person is GenogramPerson => Boolean(person))} database={database} onCancel={() => setAddingMember(null)} onSaved={() => { setAddingMember(null); onDataChanged(); }} />}
+          {appearanceTarget && <AppearanceDialog personName={displayName(genogram.people.find((person) => person.id === appearanceTarget) ?? { id: appearanceTarget, name: 'Person', familyName: null, birthDate: null, birthDatePrecision: null, deathDate: null, deathDatePrecision: null, gender: 'unknown' })} initialColor={appearance.personColors[appearanceTarget] ?? appearance.branchColors[appearanceTarget] ?? ''} initialBranch={Boolean(appearance.branchColors[appearanceTarget])} onCancel={() => setAppearanceTarget(null)} onApply={applyAppearance} />}
+          {contextEditGroup && <FamilyNodeEditor group={contextEditGroup} genogramId={genogram.summary.id} database={database} onCancel={() => setContextEditGroup(null)} onSaved={() => { setContextEditGroup(null); onDataChanged(); }} />}
+          {branchDeleteTarget && <div className="editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !branchDeleteBusy) setBranchDeleteTarget(null); }}><section className="delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="timeline-delete-title" aria-describedby="timeline-delete-warning"><header className="node-editor-heading dialog-header"><div><p className="eyebrow">Genogramm ändern</p><h3 id="timeline-delete-title">{branchDeleteTarget.descendantCount > 0 ? 'Knoten und Kindknoten löschen?' : 'Knoten löschen?'}</h3></div><button type="button" className="icon-button" onClick={() => setBranchDeleteTarget(null)} disabled={branchDeleteBusy} aria-label="Löschen abbrechen">×</button></header><div className="dialog-body"><dl className="delete-case-details"><div><dt>Ausgangspunkt</dt><dd>{branchDeleteTarget.label || 'Ausgewählter Knoten'}</dd></div><div><dt>Personen</dt><dd>{branchDeleteTarget.peopleCount}</dd></div><div><dt>Partnerschaften</dt><dd>{branchDeleteTarget.partnershipsCount}</dd></div><div><dt>Elternzuordnungen</dt><dd>{branchDeleteTarget.linksCount}</dd></div></dl><p id="timeline-delete-warning" className="delete-warning">Der ausgewählte Knoten-Zweig wird dauerhaft aus diesem Fall entfernt. Auch zugehörige Partnerschaften und Elternzuordnungen werden gelöscht. Diese Aktion lässt sich nicht rückgängig machen.</p>{branchDeleteError && <p className="inline-error" role="alert">{branchDeleteError}</p>}</div><footer className="dialog-footer"><button type="button" className="secondary-button" onClick={() => setBranchDeleteTarget(null)} disabled={branchDeleteBusy}>Abbrechen</button><button type="button" className="danger-button" disabled={branchDeleteBusy || !database} onClick={async () => { if (!database) return; setBranchDeleteBusy(true); try { await database.deleteFamilyBranch(genogram.summary.id, branchDeleteTarget.rootPersonIds); setBranchDeleteTarget(null); onDataChanged(); } catch { setBranchDeleteError('Der Knoten-Zweig konnte nicht gelöscht werden.'); } finally { setBranchDeleteBusy(false); } }}>{branchDeleteBusy ? 'Wird gelöscht …' : 'Zweig endgültig löschen'}</button></footer></section></div>}
+        </div> : <div className="family-tree" aria-label="Aufklappbare Familienstruktur" ref={treeRef}>
           <div
             className={`family-tree-canvas${orientation === 'vertical' ? ' is-vertical' : ''}${wrapChildren && orientation === 'vertical' ? ' wraps-children' : ''}${stackTerminalChildren && orientation === 'vertical' ? ' stacks-terminal-children' : ''}`}
             ref={canvasRef}
@@ -1050,10 +1118,12 @@ function hasClosedGenogramAncestor(element: HTMLElement, canvas: HTMLElement): b
   return false;
 }
 
-function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
+function GenogramGroupView({ group, hideLastNames, collapsedNodes, selectedNodeId, onSelectNode, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
   group: FamilyTreeGroup;
   hideLastNames: boolean;
   collapsedNodes: string[];
+  selectedNodeId: string | null;
+  onSelectNode: (id: string) => void;
   appearance: GenogramAppearance;
   showGenerationCohorts: boolean;
   generationCohorts: GenerationCohort[];
@@ -1066,8 +1136,11 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, s
   const [editing, setEditing] = useState(false);
   return (
     <>
-    <details className={`genogram-family${group.partners.some((person) => appearance.branchColors[person.id]) ? ' has-branch-highlight' : ''}`} data-node-id={group.id} data-partner-ids={group.partners.map((person) => person.id).join(',')} open={!collapsedNodes.includes(group.id)} onToggle={(event) => onNodeToggle(group.id, event.currentTarget.open)}>
-      <summary className="genogram-union">
+    <details className={`genogram-family${group.partners.some((person) => appearance.branchColors[person.id]) ? ' has-branch-highlight' : ''}${selectedNodeId === group.id ? ' is-selected' : ''}`} data-node-id={group.id} data-partner-ids={group.partners.map((person) => person.id).join(',')} open={!collapsedNodes.includes(group.id)} onToggle={(event) => onNodeToggle(group.id, event.currentTarget.open)}>
+      <summary className="genogram-union" onClickCapture={(event) => {
+        event.preventDefault();
+        onSelectNode(group.id);
+      }}>
         <span className="genogram-disclosure" aria-hidden="true" />
         {group.partners.map((person, index) => (
           <div className={`genogram-person ${genogramPersonCardClass(person.gender)}${person.deathDate ? ' deceased' : ''}`} data-person-id={person.id} key={person.id} style={{ ...personAppearanceStyle(appearance.personColors[person.id]), ...generationStyle(person.birthDate, showGenerationCohorts, generationCohorts) }}>
@@ -1089,7 +1162,7 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, s
         {hasChildren && <span className="genogram-child-count">{group.children.length} {group.children.length === 1 ? 'Kind' : 'Kinder'}</span>}
       </summary>
       {hasChildren && <div className="genogram-children" style={branchAppearanceStyle(group.partners.map((person) => appearance.branchColors[person.id]).find(Boolean))}>
-        {group.children.map((child) => <GenogramPersonView key={child.person.id} branch={child} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />)}
+        {group.children.map((child) => <GenogramPersonView key={child.person.id} branch={child} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />)}
       </div>}
     </details>
     {editing && <FamilyNodeEditor group={group} genogramId={genogramId} database={database} onCancel={() => setEditing(false)} onSaved={() => {
@@ -1100,10 +1173,250 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, s
   );
 }
 
-function GenogramPersonView({ branch, hideLastNames, collapsedNodes, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
+interface BirthTimelineNode {
+  person: GenogramPerson;
+  editorGroup: FamilyTreeGroup;
+  x: number;
+  birthYear: number | null;
+  top: number;
+}
+
+interface BirthTimelineEdge {
+  fromId: string;
+  fromIds?: string[];
+  toId: string;
+  type: string;
+  partnership?: boolean;
+}
+
+const timelineCardSize = 148;
+const timelineCardGap = 36;
+const timelineBranchGap = 28;
+const timelinePixelsPerYear = 14;
+
+function BirthTimelineView({ tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, selectedNodeId, onSelectNode, onOpenContextMenu, genogramId, database, onDataChanged }: {
+  tree: FamilyTreeGroup[];
+  appearance: GenogramAppearance;
+  hideLastNames: boolean;
+  showGenerationCohorts: boolean;
+  generationCohorts: GenerationCohort[];
+  selectedNodeId: string | null;
+  onSelectNode: (id: string) => void;
+  onOpenContextMenu: (menu: { x: number; y: number; nodeId: string; personId: string; parentIds: string[]; deleteRootIds: string[] }) => void;
+  genogramId: string;
+  database: LocalDatabaseClient | null;
+  onDataChanged: () => void;
+}) {
+  const layout = useMemo(() => createBirthTimelineLayout(tree), [tree]);
+  const branchFrames = Object.entries(appearance.branchColors).flatMap(([rootId, color]) => {
+    const childrenByParent = new Map<string, string[]>();
+    layout.edges.filter((edge) => !edge.partnership).forEach((edge) => {
+      for (const parentId of edge.fromIds ?? [edge.fromId]) {
+        const children = childrenByParent.get(parentId) ?? [];
+        children.push(edge.toId);
+        childrenByParent.set(parentId, children);
+      }
+    });
+    const descendantIds = new Set<string>();
+    const pending = [...(childrenByParent.get(rootId) ?? [])];
+    while (pending.length) {
+      const id = pending.pop()!;
+      if (descendantIds.has(id)) continue;
+      descendantIds.add(id);
+      pending.push(...(childrenByParent.get(id) ?? []));
+    }
+    const descendants = layout.nodes.filter((node) => descendantIds.has(node.person.id));
+    if (!descendants.length) return [];
+    const left = Math.min(...descendants.map((node) => node.x)) - 14;
+    const top = Math.min(...descendants.map((node) => node.top)) - 14;
+    const right = Math.max(...descendants.map((node) => node.x + timelineCardSize)) + 14;
+    const bottom = Math.max(...descendants.map((node) => node.top + timelineCardSize)) + 14;
+    return [{ rootId, color, x: left, y: top, width: right - left, height: bottom - top }];
+  });
+  const generationBands = showGenerationCohorts && layout.minYear !== null && layout.maxYear !== null ? generationCohorts.flatMap((cohort, index) => {
+    const fromYear = Math.max(layout.minYear!, cohort.fromYear);
+    const toYear = Math.min(layout.maxYear!, cohort.toYear);
+    if (fromYear > toYear) return [];
+    const top = layout.axisTop + (fromYear - layout.minYear!) * timelinePixelsPerYear - timelinePixelsPerYear / 2;
+    const bottom = layout.axisTop + (toYear - layout.minYear!) * timelinePixelsPerYear + timelinePixelsPerYear / 2;
+    return [{ cohort, top, height: bottom - top, fromYear, toYear, color: cohortColors[index % cohortColors.length] }];
+  }) : [];
+  return <div className="birth-timeline" style={{ width: layout.width, height: layout.height }}>
+    <svg className="birth-timeline-lines" aria-hidden="true" width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`}>
+      <text x="58" y="24" textAnchor="middle" className="birth-timeline-axis-title">Geburtsjahr</text>
+      <line x1="58" y1="44" x2="58" y2={layout.hasUnknown ? layout.unknownTop - 32 : layout.height - 30} className="birth-timeline-axis" />
+      {generationBands.map((band) => <g key={band.cohort.id}>
+        <rect x="66" y={band.top} width={layout.width - 84} height={band.height} fill={band.color} fillOpacity=".065" />
+        <line x1="58" y1={band.top} x2={layout.width - 18} y2={band.top} stroke={band.color} strokeOpacity=".3" strokeWidth="1" />
+        {band.height >= 24 && <text x="72" y={band.top + 14} className="birth-timeline-generation-label" fill={band.color}>
+          <title>{band.cohort.name} · {band.cohort.fromYear}–{band.cohort.toYear}</title>
+          {`${band.cohort.name.length > 18 ? `${band.cohort.name.slice(0, 17)}…` : band.cohort.name} · ${band.cohort.fromYear}–${band.cohort.toYear}`}
+        </text>}
+      </g>)}
+      {branchFrames.map((frame) => <rect key={frame.rootId} x={frame.x} y={frame.y} width={frame.width} height={frame.height} rx="12" fill={frame.color} fillOpacity=".07" stroke={frame.color} strokeOpacity=".72" strokeWidth="1.5" />)}
+      {layout.ticks.map((tick) => <g key={tick.year}><line x1="52" y1={tick.y} x2={layout.width - 18} y2={tick.y} className="birth-timeline-gridline" /><line x1="51" y1={tick.y} x2="65" y2={tick.y} className="birth-timeline-tick" /><text x="46" y={tick.y + 4} textAnchor="end" className="birth-timeline-year">{tick.year}</text></g>)}
+      {layout.hasUnknown && <line x1="58" y1={layout.unknownTop - 32} x2={layout.width - 18} y2={layout.unknownTop - 32} className="birth-timeline-unknown-divider" />}
+      {layout.edges.map((edge, index) => {
+        const to = layout.nodesById.get(edge.toId);
+        const sources = (edge.fromIds ?? [edge.fromId]).map((id) => layout.nodesById.get(id)).filter((node): node is BirthTimelineNode => Boolean(node));
+        const from = sources[0];
+        if (!from || !to) return null;
+        if (edge.partnership) {
+          const startX = from.x + timelineCardSize;
+          const endX = to.x;
+          const startY = from.top + timelineCardSize / 2;
+          const endY = to.top + timelineCardSize / 2;
+          const curve = Math.max(18, (endX - startX) * .45);
+          return <path key={index} d={`M ${startX} ${startY} C ${startX + curve} ${startY}, ${endX - curve} ${endY}, ${endX} ${endY}`} className="birth-timeline-partnership" />;
+        }
+        const sharedUnionSource = (edge.fromIds?.length ?? 0) > 1;
+        const sourceX = sharedUnionSource
+          ? sources.reduce((sum, node) => sum + node.x + timelineCardSize / 2, 0) / sources.length
+          : from.x + timelineCardSize / 2;
+        const sourceY = sharedUnionSource
+          ? sources.reduce((sum, node) => sum + node.top + timelineCardSize / 2, 0) / sources.length
+          : from.top + timelineCardSize / 2;
+        const fromBelow = sourceY < to.top + timelineCardSize / 2;
+        const startX = sourceX;
+        const endX = to.x + timelineCardSize / 2;
+        if (Math.abs(sourceY - (to.top + timelineCardSize / 2)) < 4) {
+          const baseY = Math.max(...sources.map((node) => node.top + timelineCardSize));
+          return <path key={index} d={`M ${startX} ${baseY} C ${startX} ${baseY + 24}, ${endX} ${baseY + 24}, ${endX} ${baseY}`} className={`parentage-${edge.type}`} />;
+        }
+        const startY = sharedUnionSource ? sourceY : from.top + (fromBelow ? timelineCardSize : 0);
+        const endY = to.top + (fromBelow ? 0 : timelineCardSize);
+        const curve = Math.max(20, Math.abs(endY - startY) * .45);
+        const direction = fromBelow ? 1 : -1;
+        return <path key={index} d={`M ${startX} ${startY} C ${startX} ${startY + curve * direction}, ${endX} ${endY - curve * direction}, ${endX} ${endY}`} className={`parentage-${edge.type}`} />;
+      })}
+      {layout.hasUnknown && <text x="72" y={layout.unknownTop - 39} className="birth-timeline-unknown-label">Geburtsjahr unbekannt</text>}
+    </svg>
+    {layout.nodes.map((node, index) => <BirthTimelinePerson key={`${node.person.id}-${index}`} node={node} appearance={appearance} hideLastNames={hideLastNames} selected={selectedNodeId === node.person.id} onSelect={() => onSelectNode(node.person.id)} onOpenContextMenu={onOpenContextMenu} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />)}
+  </div>;
+}
+
+function BirthTimelinePerson({ node, appearance, hideLastNames, selected, onSelect, onOpenContextMenu, genogramId, database, onDataChanged }: { node: BirthTimelineNode; appearance: GenogramAppearance; hideLastNames: boolean; selected: boolean; onSelect: () => void; onOpenContextMenu: (menu: { x: number; y: number; nodeId: string; personId: string; parentIds: string[]; deleteRootIds: string[] }) => void; genogramId: string; database: LocalDatabaseClient | null; onDataChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const person = node.person;
+  return <>
+    <div className={`genogram-person birth-timeline-person ${genogramPersonCardClass(person.gender)}${person.deathDate ? ' deceased' : ''}${node.birthYear === null ? ' birth-year-unknown' : ''}${selected ? ' is-selected' : ''}`} style={{ left: node.x, top: node.top, ...personAppearanceStyle(appearance.personColors[person.id]) }} data-person-id={person.id}
+      onClickCapture={onSelect}
+      onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onSelect(); onOpenContextMenu({ x: Math.max(8, Math.min(event.clientX, window.innerWidth - 268)), y: Math.max(8, Math.min(event.clientY, window.innerHeight - 250)), nodeId: node.editorGroup.id, personId: person.id, parentIds: node.editorGroup.partners.map((partner) => partner.id), deleteRootIds: [person.id] }); }}>
+      {node.birthYear === null && <span className="birth-timeline-unknown-badge">Ohne Geburtsjahr</span>}
+      <button type="button" className="genogram-name-button" onClick={() => setEditing(true)}>{genogramPersonName(person, hideLastNames)}</button>
+      {person.birthDate && <small>geb. {formatDate(person.birthDate, person.birthDatePrecision)}</small>}
+      {person.deathDate && <small>gest. {formatDate(person.deathDate, person.deathDatePrecision)}</small>}
+    </div>
+    {editing && <FamilyNodeEditor group={node.editorGroup} genogramId={genogramId} database={database} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onDataChanged(); }} />}
+  </>;
+}
+
+function createBirthTimelineLayout(tree: FamilyTreeGroup[]) {
+  const widths = new Map<FamilyTreeGroup, number>();
+  const branchWidths = new Map<FamilyTreePerson, number>();
+  const groupWidth = (group: FamilyTreeGroup): number => {
+    const partners = group.partners.length * timelineCardSize + Math.max(0, group.partners.length - 1) * timelineCardGap;
+    const children = group.children.reduce((sum, child) => sum + branchWidth(child), 0) + timelineBranchGap * Math.max(0, group.children.length - 1);
+    const width = Math.max(partners, children, timelineCardSize);
+    widths.set(group, width);
+    return width;
+  };
+  const branchWidth = (branch: FamilyTreePerson): number => {
+    const width = branch.unions.length
+      ? branch.unions.reduce((sum, group) => sum + groupWidth(group), 0) + timelineBranchGap * Math.max(0, branch.unions.length - 1)
+      : timelineCardSize;
+    branchWidths.set(branch, width);
+    return width;
+  };
+  tree.forEach(groupWidth);
+  const nodes: BirthTimelineNode[] = [];
+  const nodesById = new Map<string, BirthTimelineNode>();
+  const edges: BirthTimelineEdge[] = [];
+  const edgeKeys = new Set<string>();
+  const addNode = (person: GenogramPerson, editorGroup: FamilyTreeGroup, x: number) => {
+    if (nodesById.has(person.id)) return;
+    const parsedYear = person.birthDate ? Number(person.birthDate.slice(0, 4)) : NaN;
+    const node: BirthTimelineNode = { person, editorGroup, x, birthYear: Number.isInteger(parsedYear) && parsedYear > 0 ? parsedYear : null, top: 0 };
+    nodes.push(node);
+    nodesById.set(person.id, node);
+  };
+  const addEdge = (edge: BirthTimelineEdge) => {
+    const key = `${edge.fromId}:${edge.toId}:${edge.type}:${edge.partnership ? 'partner' : 'parent'}`;
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
+    edges.push(edge);
+  };
+  const placeGroup = (group: FamilyTreeGroup, x: number) => {
+    const width = widths.get(group) ?? timelineCardSize;
+    const partnerWidth = group.partners.length * timelineCardSize + Math.max(0, group.partners.length - 1) * timelineCardGap;
+    let partnerX = x + (width - partnerWidth) / 2;
+    group.partners.forEach((person) => { addNode(person, group, partnerX); partnerX += timelineCardSize + timelineCardGap; });
+    if (group.partners.length > 1) {
+      for (let index = 0; index < group.partners.length - 1; index += 1) addEdge({ fromId: group.partners[index]!.id, toId: group.partners[index + 1]!.id, type: 'unspecified', partnership: true });
+    }
+    const childrenWidth = group.children.reduce((sum, child) => sum + (branchWidths.get(child) ?? timelineCardSize), 0) + timelineBranchGap * Math.max(0, group.children.length - 1);
+    let childX = x + (width - childrenWidth) / 2;
+    for (const child of group.children) {
+      const childWidth = branchWidths.get(child) ?? timelineCardSize;
+      const childCenter = childX + childWidth / 2 - timelineCardSize / 2;
+      const partnerIds = new Set(group.partners.map((person) => person.id));
+      const allParentsInThisUnion = child.parentLinks.length > 1
+        && child.parentLinks.every((link) => partnerIds.has(link.parentId))
+        && group.partners.every((person) => child.parentLinks.some((link) => link.parentId === person.id));
+      if (allParentsInThisUnion) {
+        const types = child.parentLinks.map((link) => link.relationshipType);
+        addEdge({
+          fromId: child.parentLinks[0]!.parentId,
+          fromIds: child.parentLinks.map((link) => link.parentId),
+          toId: child.person.id,
+          type: types.every((type) => type === types[0]) ? types[0]! : 'unspecified',
+        });
+      } else {
+        child.parentLinks.forEach((link) => addEdge({ fromId: link.parentId, toId: child.person.id, type: link.relationshipType }));
+      }
+      if (child.unions.length) {
+        const unionsWidth = child.unions.reduce((sum, union) => sum + (widths.get(union) ?? timelineCardSize), 0) + timelineBranchGap * Math.max(0, child.unions.length - 1);
+        let unionX = childX + (childWidth - unionsWidth) / 2;
+        child.unions.forEach((union) => { placeGroup(union, unionX); unionX += (widths.get(union) ?? timelineCardSize) + timelineBranchGap; });
+      } else {
+        const leafGroup: FamilyTreeGroup = { id: `timeline-${child.person.id}`, partnership: null, partners: [child.person], children: [] };
+        addNode(child.person, leafGroup, childCenter);
+      }
+      childX += childWidth + timelineBranchGap;
+    }
+  };
+  let rootX = 240;
+  tree.forEach((group) => { placeGroup(group, rootX); rootX += (widths.get(group) ?? timelineCardSize) + 78; });
+
+  const knownYears = nodes.flatMap((node) => node.birthYear === null ? [] : [node.birthYear]);
+  const minYear = knownYears.length ? Math.min(...knownYears) : 0;
+  const maxYear = knownYears.length ? Math.max(...knownYears) : 0;
+  const axisTop = 84;
+  const knownBottom = knownYears.length ? axisTop + (maxYear - minYear) * timelinePixelsPerYear + timelineCardSize : axisTop + timelineCardSize;
+  const unknownTop = knownBottom + 64;
+  nodes.forEach((node) => {
+    node.top = node.birthYear === null
+      ? unknownTop
+      : axisTop + (node.birthYear - minYear) * timelinePixelsPerYear - timelineCardSize / 2;
+  });
+  const tickStart = Math.floor(minYear / 10) * 10;
+  const tickEnd = Math.floor(maxYear / 10) * 10;
+  const ticks = knownYears.length ? Array.from({ length: Math.floor((tickEnd - tickStart) / 10) + 1 }, (_, index) => {
+    const year = tickStart + index * 10;
+    return { year, y: axisTop + (year - minYear) * timelinePixelsPerYear };
+  }) : [];
+  const width = Math.max(720, rootX + 20);
+  const hasUnknown = nodes.some((node) => node.birthYear === null);
+  const height = hasUnknown ? unknownTop + timelineCardSize + 30 : knownBottom + 30;
+  return { nodes, nodesById, edges, ticks, width, height, unknownTop, hasUnknown, minYear: knownYears.length ? minYear : null, maxYear: knownYears.length ? maxYear : null, axisTop };
+}
+
+function GenogramPersonView({ branch, hideLastNames, collapsedNodes, selectedNodeId, onSelectNode, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
   branch: FamilyTreePerson;
   hideLastNames: boolean;
   collapsedNodes: string[];
+  selectedNodeId: string | null;
+  onSelectNode: (id: string) => void;
   appearance: GenogramAppearance;
   showGenerationCohorts: boolean;
   generationCohorts: GenerationCohort[];
@@ -1120,7 +1433,7 @@ function GenogramPersonView({ branch, hideLastNames, collapsedNodes, appearance,
   <div className="genogram-person-branch" data-child-id={branch.person.id}
     data-parent-ids={branch.parentLinks.map((link) => link.parentId).join(',')}
     data-parent-types={JSON.stringify(parentTypes)}>
-    {hasFamily ? branch.unions.map((union) => <GenogramGroupView key={union.id} group={union} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />) : <div className={`genogram-person genogram-leaf ${genogramPersonCardClass(branch.person.gender)}${branch.person.deathDate ? ' deceased' : ''}`} data-person-id={branch.person.id} style={{ ...personAppearanceStyle(appearance.personColors[branch.person.id]), ...generationStyle(branch.person.birthDate, showGenerationCohorts, generationCohorts) }}>
+    {hasFamily ? branch.unions.map((union) => <GenogramGroupView key={union.id} group={union} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />) : <div className={`genogram-person genogram-leaf ${genogramPersonCardClass(branch.person.gender)}${branch.person.deathDate ? ' deceased' : ''}${selectedNodeId === `solo-${branch.person.id}` ? ' is-selected' : ''}`} data-person-id={branch.person.id} onClickCapture={(event) => { event.preventDefault(); onSelectNode(`solo-${branch.person.id}`); }} style={{ ...personAppearanceStyle(appearance.personColors[branch.person.id]), ...generationStyle(branch.person.birthDate, showGenerationCohorts, generationCohorts) }}>
       {showGenerationCohorts && cohortForYear(branch.person.birthDate, generationCohorts) && <span className="genogram-cohort-label">{cohortForYear(branch.person.birthDate, generationCohorts)!.name}</span>}
       <button type="button" className="genogram-name-button" onClick={(event) => {
         event.preventDefault();
@@ -1262,8 +1575,8 @@ function ViewMenu({
   onCollapseFromSelection,
 }: {
   host: HTMLDivElement;
-  orientation: 'horizontal' | 'vertical' | 'genogram';
-  onOrientationChange: (orientation: 'horizontal' | 'vertical' | 'genogram') => void;
+  orientation: ViewOrientation;
+  onOrientationChange: (orientation: ViewOrientation) => void;
   wrapChildren: boolean;
   onWrapChildrenChange: (wrap: boolean) => void;
   stackTerminalChildren: boolean;
@@ -1312,6 +1625,7 @@ function ViewMenu({
       <div className="header-menu-panel view-menu-panel">
         <p className="view-menu-heading">Darstellung</p>
         <div className="orientation-options" role="group" aria-label="Darstellung">
+          <button type="button" aria-pressed={orientation === 'timeline'} onClick={() => onOrientationChange('timeline')}>Zeitachse</button>
           <button type="button" aria-pressed={orientation === 'horizontal'} onClick={() => onOrientationChange('horizontal')}>Horizontal</button>
           <button type="button" aria-pressed={orientation === 'vertical'} onClick={() => onOrientationChange('vertical')}>Vertikal</button>
           <button type="button" aria-pressed={orientation === 'genogram'} onClick={() => onOrientationChange('genogram')}>Genogramm</button>
@@ -1328,17 +1642,25 @@ function ViewMenu({
             </label>
           </>
         )}
-        {orientation === 'genogram' && (
+        {(orientation === 'genogram' || orientation === 'timeline') && (
           <>
             <label className="wrap-children-option">
               <input type="checkbox" checked={hideLastNames} onChange={(event) => onHideLastNamesChange(event.currentTarget.checked)} />
               <span>Nachnamen ausblenden</span>
             </label>
+          </>
+        )}
+        {(orientation === 'genogram' || orientation === 'timeline') && (
+          <>
             <label className="wrap-children-option">
               <input type="checkbox" checked={showGenerationCohorts} onChange={(event) => onShowGenerationCohortsChange(event.currentTarget.checked)} />
               <span>Generationen im Hintergrund anzeigen</span>
             </label>
             <button type="button" className="generation-settings-button" onClick={onOpenGenerationDialog}><Layers3 size={14} /> Generationen bearbeiten …</button>
+          </>
+        )}
+        {orientation === 'genogram' && (
+          <>
             <label className="generation-gap-control">
               <span>Abstand zwischen Generationen <output>{generationGap} px</output></span>
               <input type="range" min="30" max="180" step="5" value={generationGap} onChange={(event) => onGenerationGapChange(Number(event.currentTarget.value))} aria-label="Abstand zwischen Generationen" />
@@ -1356,7 +1678,8 @@ function ViewMenu({
           <button type="button" onClick={onResetZoom}>100 %</button>
           <button type="button" onClick={() => run(onFitWholeTree)}>Gesamtansicht</button>
         </div>
-        <small className="view-menu-hint zoom-hint">Im Genogramm kannst du mit dem Scrollrad an der Mausposition zoomen. Gesamtansicht klappt alle Äste auf und passt den gesamten Baum ein.</small>
+        <small className="view-menu-hint zoom-hint">{orientation === 'timeline' ? 'In der Zeitachse kannst du mit dem Scrollrad an der Mausposition zoomen und die Arbeitsfläche mit gedrückter Maustaste verschieben.' : 'Im Genogramm kannst du mit dem Scrollrad an der Mausposition zoomen.'} Gesamtansicht klappt alle Äste auf und passt den gesamten Baum ein.</small>
+        {orientation !== 'timeline' && <>
         <p className="view-menu-heading">Gesamter Baum</p>
         <button type="button" onClick={() => run(onExpandAll)}>Alles aufklappen</button>
         <button type="button" onClick={() => run(onCollapseAll)}>Alles zuklappen</button>
@@ -1364,6 +1687,7 @@ function ViewMenu({
         <button type="button" disabled={!canApplyToSelection} onClick={() => run(onExpandFromSelection)}>Ab hier aufklappen</button>
         <button type="button" disabled={!canApplyToSelection} onClick={() => run(onCollapseFromSelection)}>Ab hier zuklappen</button>
         {!canApplyToSelection && <small className="view-menu-hint">Markiere zuerst einen Knoten mit dem Ziel-Symbol.</small>}
+        </>}
       </div>
     </details>,
     host,

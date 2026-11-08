@@ -199,8 +199,8 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .tree-connectors path { fill: none; stroke: #9db8a6; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
 .genogram-connectors path.parentage-adoptive, .genogram-connectors path.parentage-step { stroke-dasharray: 6 4; }
 .genogram-connectors path.parentage-foster, .genogram-connectors path.parentage-social { stroke-dasharray: 1 4; stroke-linecap: round; }
-.orientation-options { display: flex; gap: 6px; padding: 0 12px 8px; }
-.orientation-options button { flex: 1; min-height: 32px; border: 1px solid #d7dfd8; border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; font-size: 11px; }
+.orientation-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0 12px 8px; }
+.orientation-options button { min-height: 32px; border: 1px solid #d7dfd8; border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; font-size: 11px; }
 .orientation-options button[aria-pressed="true"] { border-color: #78a58d; background: #edf5ef; color: #286b58; font-weight: 700; }
 .genogram-viewport { padding: 24px; cursor: grab; user-select: none; -webkit-user-select: none; }
 .genogram-viewport.is-panning { cursor: grabbing; user-select: none; }
@@ -255,6 +255,7 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-cohort-label { max-width: 100%; color: color-mix(in srgb, var(--cohort-color) 76%, #263e34); font-size: 8px; font-weight: 700; line-height: 1.2; }
 .genogram-person[style*="--person-accent"] { border-color: var(--person-accent); background: color-mix(in srgb, var(--person-accent) 10%, white); }
 .genogram-person:hover, .genogram-person:focus-within { border-color: #286b58; background: #eaf3ec; box-shadow: 0 0 0 3px rgb(57 123 103 / 16%), 0 4px 12px rgb(25 45 35 / 12%); }
+.genogram-family.is-selected > .genogram-union .genogram-person, .genogram-person.is-selected { outline: 3px solid rgb(57 123 103 / 52%); outline-offset: 4px; }
 .genogram-person.female { width: 148px; height: 148px; min-height: 148px; flex-basis: 148px; border-radius: 50%; }
 .genogram-person.male { width: 148px; height: 148px; min-height: 148px; flex-basis: 148px; border-radius: 3px; }
 .genogram-person.nonbinary { border-style: dashed; border-radius: 12px; }
@@ -310,6 +311,28 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-person-card.male { border-radius: 2px; }
 .genogram-person-card.nonbinary { transform: rotate(45deg) scale(.78); border-style: dashed; border-radius: 3px; }
 .genogram-person-card.unknown { display: grid; place-items: center; border-style: dotted; border-radius: 5px; color: #397b67; font-size: 10px; font-style: normal; font-weight: 700; }
+.birth-timeline-viewport { padding: 12px 16px 28px 0; cursor: grab; user-select: none; -webkit-user-select: none; }
+.birth-timeline-viewport.is-panning { cursor: grabbing; }
+.birth-timeline-canvas { width: max-content; min-width: 100%; }
+.birth-timeline { position: relative; min-width: 100%; }
+.birth-timeline-lines { position: absolute; z-index: 0; inset: 0 auto auto 0; overflow: visible; pointer-events: none; }
+.birth-timeline-axis { stroke: #668b78; stroke-width: 1.5; }
+.birth-timeline-axis-title { fill: #50665a; font-size: 10px; font-weight: 700; font-family: Inter, Arial, sans-serif; }
+.birth-timeline-generation-label { font-size: 9px; font-weight: 700; font-family: Inter, Arial, sans-serif; }
+.birth-timeline-gridline { stroke: #e8eee9; stroke-width: 1; }
+.birth-timeline-tick { stroke: #668b78; stroke-width: 1.5; }
+.birth-timeline-year { fill: #66776d; font-size: 10px; font-family: Inter, Arial, sans-serif; }
+.birth-timeline-unknown-divider { stroke: #a9b9ad; stroke-width: 1; stroke-dasharray: 5 4; }
+.birth-timeline-unknown-label { fill: #78867d; font-size: 11px; font-weight: 700; font-family: Inter, Arial, sans-serif; }
+.birth-timeline-lines path { fill: none; stroke: #90aa99; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.birth-timeline-lines path.parentage-adoptive, .birth-timeline-lines path.parentage-step { stroke-dasharray: 6 4; }
+.birth-timeline-lines path.parentage-foster, .birth-timeline-lines path.parentage-social { stroke-dasharray: 1 4; stroke-linecap: round; }
+.birth-timeline-lines path.birth-timeline-partnership { stroke: #75877c; }
+.birth-timeline-person { position: absolute; z-index: 1; width: 148px; height: 148px; min-height: 148px; flex-basis: 148px; padding: 18px 10px 14px; cursor: default; user-select: none; }
+.birth-timeline-person .genogram-name-button { font-size: 13px; }
+.birth-timeline-person small { font-size: 9px; }
+.birth-timeline-unknown-badge { position: absolute; top: 8px; left: 50%; max-width: calc(100% - 12px); transform: translateX(-50%); overflow: hidden; color: #7a887f; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.birth-timeline-person.birth-year-unknown { border-style: dashed; }
 .genogram-legend-line { width: 22px; height: 0; border-top: 1.5px solid #75877c; }
 .genogram-legend-dashed { border-color: #9db8a6; border-top-style: dashed; }
 .genogram-legend-dotted { border-color: #9db8a6; border-top-style: dotted; }

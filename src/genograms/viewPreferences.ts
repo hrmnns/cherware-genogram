@@ -1,4 +1,4 @@
-export type ViewOrientation = 'horizontal' | 'vertical' | 'genogram';
+export type ViewOrientation = 'timeline' | 'horizontal' | 'vertical' | 'genogram';
 
 export interface GenerationCohort {
   id: string;
@@ -34,7 +34,7 @@ const viewKey = (genogramId: string) => `cherware-genogram:view:v1:${genogramId}
 
 const defaults: GenogramViewPreferences = {
   orientation: 'horizontal',
-  zoom: { horizontal: 1, vertical: 1, genogram: 1 },
+  zoom: { timeline: 1, horizontal: 1, vertical: 1, genogram: 1 },
   wrapChildren: false,
   stackTerminalChildren: false,
   generationGap: 60,
@@ -43,6 +43,7 @@ const defaults: GenogramViewPreferences = {
   generationCohorts: defaultGenerationCohorts,
   collapsedGenogramNodes: [],
   scroll: {
+    timeline: { left: 0, top: 0 },
     horizontal: { left: 0, top: 0 },
     vertical: { left: 0, top: 0 },
     genogram: { left: 0, top: 0 },
@@ -66,6 +67,7 @@ export function readViewPreferences(genogramId: string): GenogramViewPreferences
     return {
       orientation: isOrientation(value.orientation) ? value.orientation : defaults.orientation,
       zoom: {
+        timeline: validZoom(zoom.timeline),
         horizontal: validZoom(zoom.horizontal),
         vertical: validZoom(zoom.vertical),
         genogram: validZoom(zoom.genogram),
@@ -79,6 +81,7 @@ export function readViewPreferences(genogramId: string): GenogramViewPreferences
       collapsedGenogramNodes: Array.isArray(value.collapsedGenogramNodes)
         ? value.collapsedGenogramNodes.filter((id): id is string => typeof id === 'string') : [],
       scroll: {
+        timeline: validScroll(scroll.timeline),
         horizontal: validScroll(scroll.horizontal),
         vertical: validScroll(scroll.vertical),
         genogram: validScroll(scroll.genogram),
@@ -94,7 +97,7 @@ export function writeViewPreferences(genogramId: string, preferences: GenogramVi
 }
 
 function isOrientation(value: unknown): value is ViewOrientation {
-  return value === 'horizontal' || value === 'vertical' || value === 'genogram';
+  return value === 'timeline' || value === 'horizontal' || value === 'vertical' || value === 'genogram';
 }
 
 function defaultPreferences(): GenogramViewPreferences {
@@ -104,6 +107,7 @@ function defaultPreferences(): GenogramViewPreferences {
     generationCohorts: defaults.generationCohorts.map((cohort) => ({ ...cohort })),
     collapsedGenogramNodes: [],
     scroll: {
+      timeline: { ...defaults.scroll.timeline },
       horizontal: { ...defaults.scroll.horizontal },
       vertical: { ...defaults.scroll.vertical },
       genogram: { ...defaults.scroll.genogram },
