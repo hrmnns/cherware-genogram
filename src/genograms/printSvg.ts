@@ -1,5 +1,6 @@
 import type { FamilyTreeGroup, FamilyTreePerson, GenogramDetail } from '../domain/savedGenogram';
 import type { GenogramAppearance } from './appearance';
+import type { GenerationCohort } from './viewPreferences';
 
 const cardWidth = 176;
 const cardHeight = 154;
@@ -16,6 +17,8 @@ export function createGenogramPrintSvg(
   tree: FamilyTreeGroup[],
   appearance: GenogramAppearance,
   hideLastNames: boolean,
+  showGenerationCohorts: boolean,
+  generationCohorts: GenerationCohort[],
   pageWidthMm: number,
   pageHeightMm: number,
 ): PrintLayout {
@@ -51,7 +54,7 @@ export function createGenogramPrintSvg(
   const contentHeight = (maxDepth + 1) * cardHeight + maxDepth * generationGap;
   const margin = 38;
   const titleHeight = 58;
-  const legendHeight = 46;
+  const legendHeight = 46 + (showGenerationCohorts && generationCohorts.length ? 20 + generationCohorts.length * 13 : 0);
   const diagramWidth = contentWidth + margin * 2;
   const diagramHeight = titleHeight + contentHeight + legendHeight + margin * 2;
   const mmPerUnit = Math.min((pageWidthMm - 20) / diagramWidth, (pageHeightMm - 20) / diagramHeight);
@@ -162,9 +165,17 @@ export function createGenogramPrintSvg(
       const cx = personX + cardWidth / 2;
       partnerCenters.push(cx);
       const color = appearance.personColors[person.id];
-      const fill = color ? blend(color, '#ffffff', .9) : '#f4f8f4';
-      const stroke = color ?? '#578d72';
+      const cohort = showGenerationCohorts ? cohortForPrintYear(person.birthDate, generationCohorts) : undefined;
+      const cohortColor = cohort ? cohortColors[generationCohorts.indexOf(cohort) % cohortColors.length] : undefined;
+      const fill = color ? blend(color, '#ffffff', .9) : cohortColor ? blend(cohortColor, '#ffffff', .88) : '#f4f8f4';
+      const stroke = color ?? cohortColor ?? '#578d72';
       const isFemale = person.gender === 'female';
+      if (cohortColor) {
+        const halo = isFemale
+          ? `<circle cx="${cx}" cy="${y + cardHeight / 2}" r="80" fill="${cohortColor}" fill-opacity=".11" stroke="${cohortColor}" stroke-opacity=".32" stroke-width="1" />`
+          : `<rect x="${cx - 81}" y="${y - 4}" width="162" height="162" rx="5" fill="${cohortColor}" fill-opacity=".10" stroke="${cohortColor}" stroke-opacity=".32" stroke-width="1" />`;
+        body.push(halo);
+      }
       const shape = isFemale
         ? `<circle cx="${cx}" cy="${y + cardHeight / 2}" r="73" fill="${fill}" stroke="${stroke}" stroke-width="1.6" />`
         : person.gender === 'nonbinary'
@@ -175,6 +186,7 @@ export function createGenogramPrintSvg(
       const lines = wrapText(name, 19);
       const lineHeight = 20;
       const textTop = y + cardHeight / 2 - (lines.length * lineHeight + 30) / 2 + 16;
+      if (cohort) text(cx, y + 22, cohort.name, 8, 700, cohortColor ?? '#52685b');
       lines.forEach((line, index) => text(cx, textTop + index * lineHeight, line, 15, 700, '#31483d'));
       const dates = [person.birthDate ? `geb. ${dateLabel(person.birthDate, person.birthDatePrecision)}` : '', person.deathDate ? `gest. ${dateLabel(person.deathDate, person.deathDatePrecision)}` : ''].filter(Boolean);
       dates.forEach((date, index) => text(cx, textTop + lines.length * lineHeight + index * 14, date, 10, 400, '#66756d'));
@@ -194,7 +206,13 @@ export function createGenogramPrintSvg(
   const svgHeight = diagramHeight;
   const title = escapeXml(genogram.summary.title);
   const legendY = svgHeight - margin - 9;
-  const content = `<rect width="100%" height="100%" fill="#ffffff"/><text x="${margin}" y="34" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#173c36">${title}</text>${body.join('')}<line x1="${margin}" y1="${legendY - 22}" x2="${svgWidth - margin}" y2="${legendY - 22}" stroke="#dce5dd"/><circle cx="${margin + 8}" cy="${legendY}" r="7" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 25}" y="${legendY - 7}" width="14" height="14" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 48}" y="${legendY - 5}" width="10" height="10" transform="rotate(45 ${margin + 53} ${legendY})" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="2 1"/><rect x="${margin + 70}" y="${legendY - 7}" width="14" height="14" rx="4" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="1 2"/><text x="${margin + 77}" y="${legendY + 3.5}" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#566a5e">?</text><text x="${margin + 92}" y="${legendY + 4}" font-family="Inter, Arial, sans-serif" font-size="10" fill="#566a5e">weiblich · männlich · nicht-binär · unbekannt</text>`;
+  const generationLegend = showGenerationCohorts ? generationCohorts.map((cohort, index) => {
+    const y = legendY - 31 - (generationCohorts.length - index - 1) * 13;
+    const color = cohortColors[index % cohortColors.length];
+    return `<rect x="${margin}" y="${y - 7}" width="9" height="9" rx="2" fill="${color}" fill-opacity=".55" stroke="${color}"/><text x="${margin + 15}" y="${y}" font-family="Inter, Arial, sans-serif" font-size="9" fill="#566a5e">${escapeXml(cohort.name)} · ${cohort.fromYear}–${cohort.toYear}</text>`;
+  }).join('') : '';
+  const generationLegendTitle = showGenerationCohorts && generationCohorts.length ? `<text x="${margin}" y="${legendY - 39 - generationCohorts.length * 13}" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" fill="#40544a">Generationen (Geburtsjahre)</text>` : '';
+  const content = `<rect width="100%" height="100%" fill="#ffffff"/><text x="${margin}" y="34" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#173c36">${title}</text>${body.join('')}${generationLegendTitle}${generationLegend}<line x1="${margin}" y1="${legendY - 22}" x2="${svgWidth - margin}" y2="${legendY - 22}" stroke="#dce5dd"/><circle cx="${margin + 8}" cy="${legendY}" r="7" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 25}" y="${legendY - 7}" width="14" height="14" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 48}" y="${legendY - 5}" width="10" height="10" transform="rotate(45 ${margin + 53} ${legendY})" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="2 1"/><rect x="${margin + 70}" y="${legendY - 7}" width="14" height="14" rx="4" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="1 2"/><text x="${margin + 77}" y="${legendY + 3.5}" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#566a5e">?</text><text x="${margin + 92}" y="${legendY + 4}" font-family="Inter, Arial, sans-serif" font-size="10" fill="#566a5e">weiblich · männlich · nicht-binär · unbekannt</text>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidthMm}mm" height="${pageHeightMm}mm" viewBox="0 0 ${svgWidth} ${svgHeight}" preserveAspectRatio="xMidYMid meet">${content}</svg>`;
   return { width: svgWidth, height: svgHeight, svg, smallestTextPt };
 }
@@ -203,6 +221,14 @@ function formatPrintDate(value: string, precision: string | null): string {
   if (precision === 'year' || /^\d{4}$/.test(value)) return value;
   const [year, month, day] = value.split('-');
   return precision === 'month' || !day ? `${month}.${year}` : `${day}.${month}.${year}`;
+}
+
+const cohortColors = ['#72a889', '#6b9fbd', '#9784b8', '#ca8292', '#d69a61', '#bea84f', '#5c9b9d'];
+
+function cohortForPrintYear(birthDate: string | null, cohorts: GenerationCohort[]): GenerationCohort | undefined {
+  if (!birthDate) return undefined;
+  const year = Number(birthDate.slice(0, 4));
+  return Number.isInteger(year) ? cohorts.find((cohort) => year >= cohort.fromYear && year <= cohort.toYear) : undefined;
 }
 
 function escapeXml(value: string): string {

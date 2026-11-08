@@ -846,7 +846,7 @@ function GenogramView({
         </div>
       </div>
       {generationDialogOpen && <GenerationCohortDialog cohorts={generationCohorts} onClose={() => setGenerationDialogOpen(false)} onSave={(next) => { setGenerationCohorts(next); setGenerationDialogOpen(false); }} />}
-      {printDialogOpen && <GenogramPrintDialog genogram={genogram} tree={tree} appearance={appearance} hideLastNames={hideLastNames} onClose={() => setPrintDialogOpen(false)} />}
+      {printDialogOpen && <GenogramPrintDialog genogram={genogram} tree={tree} appearance={appearance} hideLastNames={hideLastNames} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onClose={() => setPrintDialogOpen(false)} />}
       {tree.length === 0 ? (
         <p className="empty-state">In diesem Fall wurden keine darstellbaren Personen gefunden.</p>
       ) : (
@@ -1185,18 +1185,20 @@ function branchAppearanceStyle(color: string | undefined): React.CSSProperties |
   return color ? { '--branch-color': color } as React.CSSProperties : undefined;
 }
 
-function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, onClose }: {
+function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, onClose }: {
   genogram: GenogramDetail;
   tree: FamilyTreeGroup[];
   appearance: GenogramAppearance;
   hideLastNames: boolean;
+  showGenerationCohorts: boolean;
+  generationCohorts: GenerationCohort[];
   onClose: () => void;
 }) {
   const [width, setWidth] = useState(1000);
   const [height, setHeight] = useState(700);
   const [error, setError] = useState<string | null>(null);
   const validDimensions = Number.isFinite(width) && Number.isFinite(height) && width >= 200 && width <= 5000 && height >= 200 && height <= 5000;
-  const layout = validDimensions ? createGenogramPrintSvg(genogram, tree, appearance, hideLastNames, width, height) : null;
+  const layout = validDimensions ? createGenogramPrintSvg(genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, width, height) : null;
 
   function openPrintDialog() {
     if (!layout) return;
@@ -1402,10 +1404,11 @@ function GenerationCohortDialog({ cohorts, onClose, onSave }: { cohorts: Generat
     <form className="generation-dialog" role="dialog" aria-modal="true" aria-labelledby="generation-dialog-title" onSubmit={save}>
       <header className="dialog-header"><div><p className="eyebrow">Genogramm-Ansicht</p><h3 id="generation-dialog-title">Generationen festlegen</h3><p className="generation-dialog-intro">Die Zeiträume beziehen sich auf das Geburtsjahr und können angepasst werden.</p></div><button type="button" className="icon-button" aria-label="Dialog schließen" onClick={onClose}><X size={18} /></button></header>
       <div className="dialog-body generation-dialog-body">
+        <div className="generation-list-header" aria-hidden="true"><span>Generation</span><span>Von</span><span>Bis</span><span /></div>
         {draft.map((cohort, index) => <div className="generation-editor-row" key={cohort.id}>
-          <label><span>Name</span><input maxLength={60} value={cohort.name} onChange={(event) => update(index, 'name', event.currentTarget.value)} /></label>
-          <label><span>Von</span><input type="number" min="1" max="9999" value={cohort.fromYear} onChange={(event) => update(index, 'fromYear', event.currentTarget.value)} /></label>
-          <label><span>Bis</span><input type="number" min="1" max="9999" value={cohort.toYear} onChange={(event) => update(index, 'toYear', event.currentTarget.value)} /></label>
+          <label><input aria-label={`Name der Generation ${index + 1}`} maxLength={60} value={cohort.name} onChange={(event) => update(index, 'name', event.currentTarget.value)} /></label>
+          <label><input aria-label={`Geburtsjahr von ${cohort.name}`} type="number" min="1" max="9999" value={cohort.fromYear} onChange={(event) => update(index, 'fromYear', event.currentTarget.value)} /></label>
+          <label><input aria-label={`Geburtsjahr bis ${cohort.name}`} type="number" min="1" max="9999" value={cohort.toYear} onChange={(event) => update(index, 'toYear', event.currentTarget.value)} /></label>
           <button type="button" className="generation-remove-button" aria-label={`${cohort.name} entfernen`} title="Generation entfernen" onClick={() => setDraft((current) => current.filter((_, i) => i !== index))}><Trash2 size={15} /></button>
         </div>)}
         {draft.length === 0 && <p className="generation-empty">Noch keine Generationen angelegt.</p>}

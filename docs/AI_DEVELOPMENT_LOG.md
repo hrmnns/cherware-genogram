@@ -591,4 +591,6 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 
 **Ergänzung:** Bei aktivierter Hervorhebung führt die Legende die Generationen mit Farbfeld und jeweiligem Geburtszeitraum auf.
 
+**PDF-Ergänzung:** Wenn die Generationen-Hervorhebung in der Ansicht aktiviert ist, übernimmt der vektorbasierte Druckexport die Farbtönung und Bezeichnung an den Personen sowie die Generationenliste mit Zeiträumen in die PDF-Legende.
+
 **Überprüfung:** Produktionsbuild erfolgreich.
