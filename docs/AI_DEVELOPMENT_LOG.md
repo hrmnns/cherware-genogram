@@ -564,3 +564,17 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 **Umsetzung:** Zweigrahmen erhalten nun eine einheitliche Innenluft auf allen Seiten und umfassen die tatsächliche Höhe der Kindgenerationen. Dadurch bleibt auch unter der letzten Karte derselbe klare Abstand wie seitlich.
 
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Fiktives Fünf-Generationen-Beispiel
+
+**Umsetzung:** Unter `docs/examples/` liegt nun ein zweites Genogramm-Archiv mit 28 vollständig erfundenen Personen aus fünf Generationen. Namen, Lebensdaten und Partnerschaftsjahre sind generationstypisch und chronologisch plausibel; Eltern-Kind-Zuordnungen bilden mehrere Seitenzweige ab.
+
+**Überprüfung:** JSON- und Schema-Validierung sowie Prüfung der Generationentiefe und Datumsreihenfolge erfolgreich.
+
+## 2026-11-08 - GitHub-Pages-Pfad und automatischer Build
+
+**Beobachtung:** Die Projektseite wurde ohne korrekten Vite-Basispfad ausgeliefert; Assets wurden von der Domainwurzel statt aus `/cherware-genogram/` angefordert. Im Repository fehlte außerdem ein Workflow, der die Vite-Anwendung vor der Veröffentlichung baut.
+
+**Umsetzung:** GitHub-Actions-Builds verwenden nun den Repository-Unterpfad als Vite-Basis; lokal bleibt der Standardpfad `/`. Ein Pages-Workflow installiert Abhängigkeiten, baut `dist` und veröffentlicht dieses Build-Artefakt bei Pushes auf `main`.
+
+**Überprüfung:** Produktionsbuild mit simuliertem GitHub-Actions-Umfeld und Prüfung der erzeugten Asset-URLs erfolgreich.
