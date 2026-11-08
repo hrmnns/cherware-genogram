@@ -1,0 +1,13 @@
+# Keep local data out of version control.
+/data/
+/input/
+
+# JavaScript dependencies and generated output.
+/node_modules/
+/dist/
+/coverage/
+
+# Local environment files.
+.env
+.env.*
+!.env.example

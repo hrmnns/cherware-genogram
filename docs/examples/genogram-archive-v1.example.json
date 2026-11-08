@@ -1,0 +1,81 @@
+{
+  "format": "cherware-genogram",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-07T12:00:00.000Z",
+  "genogram": {
+    "title": "Synthetisches Beispiel",
+    "createdAt": "2026-11-07T11:00:00.000Z",
+    "sourceFormat": "synthetic-example"
+  },
+  "people": [
+    {
+      "id": "p-1001",
+      "name": "Mara",
+      "familyName": "Beispiel",
+      "birthDate": "1948-02-14",
+      "birthDatePrecision": "day",
+      "deathDate": null,
+      "deathDatePrecision": null
+    },
+    {
+      "id": "p-1002",
+      "name": "Nils",
+      "familyName": "Muster",
+      "birthDate": "1947",
+      "birthDatePrecision": "year",
+      "deathDate": null,
+      "deathDatePrecision": null
+    },
+    {
+      "id": "p-1003",
+      "name": "Lena",
+      "familyName": "Beispiel",
+      "birthDate": "1974-09-03",
+      "birthDatePrecision": "day",
+      "deathDate": null,
+      "deathDatePrecision": null
+    },
+    {
+      "id": "p-1004",
+      "name": "Alex",
+      "familyName": "Demo",
+      "birthDate": null,
+      "birthDatePrecision": null,
+      "deathDate": null,
+      "deathDatePrecision": null
+    },
+    {
+      "id": "p-1005",
+      "name": "Kim",
+      "familyName": "Beispiel",
+      "birthDate": "2001",
+      "birthDatePrecision": "year",
+      "deathDate": null,
+      "deathDatePrecision": null
+    }
+  ],
+  "partnerships": [
+    {
+      "id": "u-2001",
+      "personAId": "p-1001",
+      "personBId": "p-1002",
+      "status": "married",
+      "startDate": "1970",
+      "startDatePrecision": "year"
+    },
+    {
+      "id": "u-2002",
+      "personAId": "p-1003",
+      "personBId": "p-1004",
+      "status": "unknown",
+      "startDate": null,
+      "startDatePrecision": null
+    }
+  ],
+  "parentChildLinks": [
+    { "id": "r-3001", "parentId": "p-1001", "childId": "p-1003", "relationshipType": "unspecified" },
+    { "id": "r-3002", "parentId": "p-1002", "childId": "p-1003", "relationshipType": "unspecified" },
+    { "id": "r-3003", "parentId": "p-1003", "childId": "p-1005", "relationshipType": "unspecified" },
+    { "id": "r-3004", "parentId": "p-1004", "childId": "p-1005", "relationshipType": "unspecified" }
+  ]
+}

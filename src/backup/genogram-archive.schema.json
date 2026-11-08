@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cherware:genogram:archive:1",
+  "title": "Cherware Genogram Archive v1",
+  "description": "A portable, single-genogram archive containing its people and relationship records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "formatVersion", "exportedAt", "genogram", "people", "partnerships", "parentChildLinks"],
+  "properties": {
+    "format": { "const": "cherware-genogram" },
+    "formatVersion": { "const": 1 },
+    "exportedAt": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "genogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "createdAt", "sourceFormat"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "createdAt": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "sourceFormat": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "people": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "familyName", "birthDate", "birthDatePrecision", "deathDate", "deathDatePrecision"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "familyName": { "type": ["string", "null"], "maxLength": 500 },
+          "birthDate": { "$ref": "#/$defs/date" },
+          "birthDatePrecision": { "$ref": "#/$defs/precision" },
+          "deathDate": { "$ref": "#/$defs/date" },
+          "deathDatePrecision": { "$ref": "#/$defs/precision" },
+          "gender": { "enum": ["female", "male", "nonbinary", "unknown"] }
+        }
+      }
+    },
+    "partnerships": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "personAId", "personBId", "status", "startDate", "startDatePrecision"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "personAId": { "$ref": "#/$defs/id" },
+          "personBId": { "$ref": "#/$defs/id" },
+          "status": { "enum": ["married", "unknown"] },
+          "startDate": { "$ref": "#/$defs/date" },
+          "startDatePrecision": { "$ref": "#/$defs/precision" }
+        }
+      }
+    },
+    "parentChildLinks": {
+      "type": "array",
+      "maxItems": 200000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "parentId", "childId", "relationshipType"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "parentId": { "$ref": "#/$defs/id" },
+          "childId": { "$ref": "#/$defs/id" },
+          "relationshipType": { "type": "string", "minLength": 1, "maxLength": 100 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "date": { "type": ["string", "null"], "pattern": "^(\\d{4}|\\d{4}-\\d{2}|\\d{4}-\\d{2}-\\d{2})$" },
+    "precision": { "type": ["string", "null"], "enum": ["day", "month", "year", null] }
+  }
+}
