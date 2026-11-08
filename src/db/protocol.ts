@@ -1,5 +1,5 @@
 import type { ImportEntryDraft, ImportSummary } from '../domain/model';
-import type { AddFamilyMemberInput, FamilyNodeCorrection, GenogramDetail, GenogramSummary } from '../domain/savedGenogram';
+import type { AddFamilyMemberInput, FamilyNodeCorrection, GenogramDetail, GenogramSummary, NewGenogramInput } from '../domain/savedGenogram';
 import type { GenogramArchiveV1 } from '../backup/archive';
 
 export type DatabaseStatus =
@@ -17,6 +17,7 @@ export type DatabaseCommand =
   | { type: 'rename-genogram'; genogramId: string; title: string }
   | { type: 'update-family-node'; correction: FamilyNodeCorrection }
   | { type: 'add-family-member'; input: AddFamilyMemberInput }
+  | { type: 'create-genogram'; input: NewGenogramInput }
   | { type: 'export-genogram'; genogramId: string }
   | { type: 'import-genogram'; archive: unknown }
   | { type: 'delete-family-branch'; genogramId: string; rootPersonIds: string[] }
@@ -34,6 +35,7 @@ export type DatabaseWorkerMessage =
   | { type: 'genogram-renamed'; requestId: string }
   | { type: 'family-node-updated'; requestId: string }
   | { type: 'family-member-added'; requestId: string }
+  | { type: 'genogram-created'; requestId: string; genogramId: string }
   | { type: 'genogram-exported'; requestId: string; archive: GenogramArchiveV1 | null }
   | { type: 'genogram-imported'; requestId: string; genogramId: string }
   | { type: 'family-branch-deleted'; requestId: string }

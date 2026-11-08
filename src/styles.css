@@ -232,6 +232,8 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .appearance-dialog .dialog-footer > button { box-sizing: border-box; width: 118px; min-height: 44px; margin: 0; }
 .add-member-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(100%, 620px); max-height: min(90dvh, 820px); overflow: hidden; border: 1px solid #dfe4de; border-radius: 15px; background: #fbfaf7; box-shadow: 0 18px 65px rgb(20 39 30 / 24%); }
 .add-member-body { align-content: start; }
+.add-member-dialog .dialog-footer .primary-button { margin-top: 0; }
+.form-error { margin: 0; color: #9b4c3e; font-size: 12px; line-height: 1.5; }
 .add-member-parents { display: grid; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; }
 .add-member-parents legend { padding: 0 5px; color: #53685d; font-size: 12px; font-weight: 700; }
 .add-member-parents > p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
@@ -248,6 +250,9 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-disclosure::before { content: '+'; font-size: 13px; line-height: 1; }
 .genogram-family[open] > .genogram-union .genogram-disclosure::before { content: '−'; }
 .genogram-person { position: relative; box-sizing: border-box; display: flex; width: 172px; min-height: 106px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 11px 12px; border: 1.5px solid #578d72; background: #f4f8f4; text-align: center; }
+.genogram-person[style*="--cohort-color"] { isolation: isolate; background: color-mix(in srgb, var(--cohort-color) 12%, #f8faf7); }
+.genogram-person[style*="--cohort-color"]::before { position: absolute; z-index: -1; inset: -9px; border: 1px solid color-mix(in srgb, var(--cohort-color) 35%, transparent); border-radius: inherit; background: color-mix(in srgb, var(--cohort-color) 8%, transparent); content: ''; pointer-events: none; }
+.genogram-cohort-label { max-width: 100%; color: color-mix(in srgb, var(--cohort-color) 76%, #263e34); font-size: 8px; font-weight: 700; line-height: 1.2; }
 .genogram-person[style*="--person-accent"] { border-color: var(--person-accent); background: color-mix(in srgb, var(--person-accent) 10%, white); }
 .genogram-person:hover, .genogram-person:focus-within { border-color: #286b58; background: #eaf3ec; box-shadow: 0 0 0 3px rgb(57 123 103 / 16%), 0 4px 12px rgb(25 45 35 / 12%); }
 .genogram-person.female { width: 148px; height: 148px; min-height: 148px; flex-basis: 148px; border-radius: 50%; }
@@ -266,6 +271,21 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-children { position: relative; display: flex; width: max-content; justify-content: center; gap: 30px; padding-top: var(--generation-gap, 60px); }
 .genogram-children[style*="--branch-color"] { isolation: isolate; }
 .genogram-children[style*="--branch-color"]::before { position: absolute; z-index: -1; inset: 18px -16px -18px; border: 1.5px solid color-mix(in srgb, var(--branch-color) 72%, white); border-radius: 16px; background: color-mix(in srgb, var(--branch-color) 9%, transparent); content: ''; pointer-events: none; }
+.generation-settings-button { display: inline-flex; align-items: center; gap: 7px; margin: 0 12px 10px; padding: 6px 8px; border: 1px solid #dce4dd; border-radius: 6px; background: #fff; color: #397b67; cursor: pointer; font: inherit; font-size: 10px; }
+.generation-settings-button:hover, .generation-settings-button:focus-visible { border-color: #a9c8b4; background: #f0f6f1; outline: none; }
+.generation-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(100%, 720px); max-height: min(90dvh, 760px); overflow: hidden; border: 1px solid #dfe4de; border-radius: 15px; background: #fbfaf7; box-shadow: 0 18px 65px rgb(20 39 30 / 24%); }
+.generation-dialog .dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 15px; border-bottom: 1px solid #e4e6df; }
+.generation-dialog .dialog-header h3 { margin: 0; color: #173c36; font-family: Georgia, 'Times New Roman', serif; font-size: 24px; }
+.generation-dialog-intro { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.generation-dialog-body { align-content: start; gap: 10px; }
+.generation-dialog-body > small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.generation-editor-row { display: grid; grid-template-columns: minmax(180px, 1fr) 92px 92px 34px; align-items: end; gap: 9px; padding: 9px; border: 1px solid #e3e6df; border-radius: 8px; background: #fff; }
+.generation-editor-row label { display: grid; gap: 5px; color: #53685d; font-size: 10px; }
+.generation-editor-row input { box-sizing: border-box; width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid #d8ded7; border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-size: 11px; }
+.generation-remove-button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #ead3cc; border-radius: 6px; background: #fff; color: #9b4c3e; cursor: pointer; }
+.generation-add-button { display: inline-flex; width: fit-content; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #d5e2d7; border-radius: 6px; background: #fff; color: #397b67; cursor: pointer; font: inherit; font-size: 11px; }
+.generation-empty { margin: 0; color: var(--muted); font-size: 11px; }
+.generation-dialog .dialog-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 13px 24px; border-top: 1px solid #e4e6df; }
 .generation-gap-control { display: grid; gap: 7px; padding: 5px 12px 12px; color: #53685d; font-size: 11px; }
 .generation-gap-control > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .generation-gap-control output { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -276,6 +296,10 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-legend { display: grid; align-content: start; gap: 9px; min-width: 205px; margin: 12px 12px 0 8px; padding: 13px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 10px; }
 .genogram-legend strong { color: var(--ink); font-size: 11px; }
 .genogram-legend > span { display: flex; align-items: center; gap: 8px; }
+.genogram-generation-legend { display: grid; gap: 7px; margin-top: 3px; padding-top: 9px; border-top: 1px solid #e5e9e3; }
+.genogram-generation-legend > strong { margin-bottom: 1px; font-size: 10px; }
+.genogram-generation-legend > span { display: flex; align-items: center; gap: 7px; line-height: 1.3; }
+.genogram-generation-swatch { width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid rgb(43 66 53 / 15%); border-radius: 3px; }
 .genogram-person-card { display: inline-block; box-sizing: border-box; width: 22px; height: 22px; flex: 0 0 22px; border: 1.5px solid #578d72; background: #f4f8f4; }
 .genogram-person-card.female { border-radius: 50%; }
 .genogram-person-card.male { border-radius: 2px; }
@@ -446,6 +470,7 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .file-menu-actions > button, .file-menu-actions > label { position: relative; display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #d5e1d7; border-radius: 7px; background: #fff; color: #397b67; cursor: pointer; font-size: 11px; font-weight: 650; }
 .file-menu-actions > button:hover, .file-menu-actions > label:hover { border-color: #91b29a; background: #f3f8f4; }
 .file-menu-actions > button:disabled, .file-menu-actions > label.is-disabled { opacity: .5; cursor: not-allowed; }
+.file-menu-actions > .file-menu-create-genogram { grid-column: 1 / -1; gap: 7px; background: #edf5ef; }
 .file-menu-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%); }
 .file-menu-danger-row { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding-top: 10px; border-top: 1px solid var(--line); }
 .file-menu-danger-row .menu-danger { padding: 5px 0; border: 0; background: none; color: #a34f42; cursor: pointer; font-size: 10px; font-weight: 650; }
@@ -496,7 +521,10 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .case-drawer { display: flex; width: min(360px, 88vw); height: 100dvh; flex-direction: column; padding: 23px 18px 18px; border-right: 1px solid #dfe4de; background: #fbfaf7; box-shadow: 12px 0 38px rgb(20 39 30 / 19%); animation: drawer-slide-in 200ms ease-out; }
 .case-drawer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .case-drawer-body { display: flex; min-height: 0; flex: 1; flex-direction: column; }
-.case-drawer-footer { display: flex; justify-content: flex-end; flex: 0 0 auto; margin: 12px -18px -18px; padding: 12px 18px; border-top: 1px solid var(--line); background: #fbfaf7; }
+.case-drawer-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto; margin: 12px -18px -18px; padding: 12px 18px; border-top: 1px solid var(--line); background: #fbfaf7; }
+.case-drawer-footer .primary-button { min-height: 42px; margin: 0; padding: 0 12px; font-size: 11px; }
+.new-genogram-empty-state p { margin-bottom: 14px; }
+.new-genogram-empty-state .primary-button { margin-top: 0; }
 .case-drawer-heading .eyebrow { margin-bottom: 7px; font-size: 10px; }
 .case-drawer-heading h2 { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 23px; }
 .case-drawer-note { margin: 12px 0 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }

@@ -578,3 +578,17 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 **Umsetzung:** GitHub-Actions-Builds verwenden nun den Repository-Unterpfad als Vite-Basis; lokal bleibt der Standardpfad `/`. Ein Pages-Workflow installiert Abhängigkeiten, baut `dist` und veröffentlicht dieses Build-Artefakt bei Pushes auf `main`.
 
 **Überprüfung:** Produktionsbuild mit simuliertem GitHub-Actions-Umfeld und Prüfung der erzeugten Asset-URLs erfolgreich.
+
+## 2026-11-08 - Genogramm ohne Import neu anlegen
+
+**Umsetzung:** Fallübersicht und Datei-Menü bieten nun „Neues Genogramm“. Das Formular erfasst Titel und erste Person; Fall und Wurzelperson werden gemeinsam in einer Worker-Transaktion lokal gespeichert. Der neue Fall wird direkt geöffnet und als noch nicht extern gesichert gezählt; weitere Personen können anschließend über die Knotenaktionen ergänzt werden.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-08 - Generationen im Genogramm hervorheben
+
+**Umsetzung:** Die Genogramm-Ansicht bietet nun editierbare Geburtsjahr-Zeiträume für Stille Generation, Babyboomer, Generation X, Millennials/Generation Y, Generation Z und Alpha. Eine optionale Ansichtssteuerung markiert passende Personenkarten mit einem dezenten farbigen Hintergrund und Generationsnamen. Schalter und Definitionen werden pro Fall lokal im Browser gespeichert. Die Grenzen sind an verbreiteten Kohorteneinteilungen orientiert und ausdrücklich bearbeitbar.
+
+**Ergänzung:** Bei aktivierter Hervorhebung führt die Legende die Generationen mit Farbfeld und jeweiligem Geburtszeitraum auf.
+
+**Überprüfung:** Produktionsbuild erfolgreich.

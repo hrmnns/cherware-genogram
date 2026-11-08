@@ -37,6 +37,9 @@ workerScope.addEventListener('message', (event: MessageEvent<DatabaseRequest>) =
     } else if (request.type === 'add-family-member') {
       addFamilyMember(database, request.input);
       notify({ type: 'family-member-added', requestId: request.requestId });
+    } else if (request.type === 'create-genogram') {
+      const genogramId = createGenogram(database, request.input);
+      notify({ type: 'genogram-created', requestId: request.requestId, genogramId });
     } else if (request.type === 'export-genogram') {
       const detail = getGenogram(database, request.genogramId);
       notify({
@@ -300,6 +303,41 @@ function renameGenogram(connection: NonNullable<typeof database>, genogramId: st
   const exists = Number(db.selectValue('SELECT COUNT(*) FROM genogram WHERE id = ?', [genogramId]));
   if (exists !== 1) throw new Error('Genogram not found');
   db.exec({ sql: 'UPDATE genogram SET title = ? WHERE id = ?', bind: [normalizedTitle, genogramId] });
+}
+
+function createGenogram(
+  connection: NonNullable<typeof database>,
+  input: import('../domain/savedGenogram').NewGenogramInput,
+): string {
+  const title = input.title.trim();
+  const person = input.rootPerson;
+  if (!title || title.length > 200 || !person.name.trim()
+    || !['female', 'male', 'nonbinary', 'unknown'].includes(person.gender)) {
+    throw new Error('Invalid new genogram');
+  }
+
+  const genogramId = crypto.randomUUID();
+  const { db } = connection;
+  db.exec('BEGIN IMMEDIATE;');
+  try {
+    db.exec({
+      sql: 'INSERT INTO genogram (id, title, created_at, source_format) VALUES (?, ?, ?, ?)',
+      bind: [genogramId, title, new Date().toISOString(), 'manual'],
+    });
+    db.exec({
+      sql: `INSERT INTO person (id, genogram_id, name, family_name, birth_date, birth_date_precision, birth_date_is_month,
+        death_date, death_date_precision, death_date_is_month, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      bind: [
+        person.id, genogramId, person.name.trim(), normalizeNullable(person.familyName),
+        ...databaseDate(person.birthDate), ...databaseDate(person.deathDate), person.gender,
+      ],
+    });
+    db.exec('COMMIT;');
+    return genogramId;
+  } catch (error) {
+    db.exec('ROLLBACK;');
+    throw error;
+  }
 }
 
 function getGenogram(

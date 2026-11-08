@@ -92,6 +92,11 @@ export interface AddFamilyMemberInput {
     | { kind: 'partner'; partnerId: string; status: 'married' | 'unknown'; startDate: EditableDate | null };
 }
 
+export interface NewGenogramInput {
+  title: string;
+  rootPerson: PersonCorrection;
+}
+
 export interface FamilyTreePerson {
   person: GenogramPerson;
   unions: FamilyTreeGroup[];

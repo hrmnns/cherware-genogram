@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ChangeEvent } from 'react';
-import { Baby, Check, ChevronsDown, ChevronsUp, Pencil, Printer, Trash2, X } from 'lucide-react';
+import { Baby, Check, ChevronsDown, ChevronsUp, Pencil, Plus, Printer, Trash2, X, Layers3 } from 'lucide-react';
 import type { LocalDatabaseClient } from '../db/database';
 import { parseGenogramArchive, serializeGenogramArchive } from '../backup/archive';
 import type { GenogramArchiveV1 } from '../backup/archive';
@@ -9,7 +9,7 @@ import { editableDateInput } from '../importer/parseWorkbook';
 import ImportPanel from '../importer/ImportPanel';
 import { buildFamilyTree } from '../domain/buildFamilyTree';
 import { readLastGenogramId, readViewPreferences, writeLastGenogramId, writeViewPreferences } from './viewPreferences';
-import type { GenogramViewPreferences, ViewOrientation } from './viewPreferences';
+import type { GenerationCohort, GenogramViewPreferences, ViewOrientation } from './viewPreferences';
 import { readGenogramAppearance, writeGenogramAppearance } from './appearance';
 import type { GenogramAppearance } from './appearance';
 import { createGenogramPrintSvg } from './printSvg';
@@ -22,6 +22,7 @@ import type {
   GenogramDetail,
   GenogramPerson,
   GenogramSummary,
+  NewGenogramInput,
   ParentageType,
 } from '../domain/savedGenogram';
 
@@ -53,6 +54,7 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
   const [deleteTarget, setDeleteTarget] = useState<GenogramSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [newGenogramOpen, setNewGenogramOpen] = useState(false);
   const fileMenuRef = useRef<HTMLDetailsElement>(null);
   const pendingChanges = selectedId ? pendingChangeCounts[selectedId] ?? 0 : 0;
 
@@ -71,6 +73,15 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
       persistPendingChangeCounts(next);
       return next;
     });
+  }
+
+  function handleGenogramCreated(genogramId: string) {
+    writeLastGenogramId(genogramId);
+    recordDatasetChange(genogramId);
+    setSelectedId(genogramId);
+    setNewGenogramOpen(false);
+    onCloseCaseMenu();
+    onArchiveImported();
   }
 
   useEffect(() => {
@@ -213,6 +224,10 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
                 <p>JSON-Archive sichern einen Fall oder fügen einen gesicherten Fall hinzu.</p>
               </div>
               <div className="file-menu-actions">
+                <button type="button" className="file-menu-create-genogram" onClick={() => {
+                  setNewGenogramOpen(true);
+                  if (fileMenuRef.current) fileMenuRef.current.open = false;
+                }} disabled={!databaseReady || !database || archiveBusy}><Plus size={14} /> Neues Genogramm anlegen</button>
                 <button type="button" onClick={() => { setExportDialogOpen(true); if (fileMenuRef.current) fileMenuRef.current.open = false; }} disabled={!databaseReady || !selectedId || archiveBusy}>JSON sichern</button>
                 <label className={!databaseReady || archiveBusy ? 'is-disabled' : ''}>JSON-Archiv öffnen
                   <input type="file" accept=".json,application/json" onChange={handleArchiveFileChange} disabled={!databaseReady || archiveBusy} />
@@ -249,13 +264,16 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
                     setSelectedId(genogram.id);
                     onCloseCaseMenu();
                   }} aria-current={selectedId === genogram.id ? 'true' : undefined}>
-                    <strong>{genogram.title}</strong><span>Importiert {formatDateTime(genogram.createdAt)}</span>
+                    <strong>{genogram.title}</strong><span>Angelegt {formatDateTime(genogram.createdAt)}</span>
                     <small>{genogram.personCount} Personen · {genogram.partnershipCount} Partnerschaften</small>
                   </button>
                 ))}
               </nav>
             </div>
-            <footer className="case-drawer-footer"><button type="button" className="secondary-button" onClick={onCloseCaseMenu}>Schließen</button></footer>
+            <footer className="case-drawer-footer">
+              <button type="button" className="primary-button" onClick={() => setNewGenogramOpen(true)} disabled={!databaseReady || !database}><Plus size={15} /> Neues Genogramm</button>
+              <button type="button" className="secondary-button" onClick={onCloseCaseMenu}>Schließen</button>
+            </footer>
           </aside>
         </div>
       )}
@@ -280,7 +298,10 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
       {!databaseReady && <p className="inline-notice">Die lokalen Fälle werden geladen, sobald der Speicher bereit ist.</p>}
       {error && <p className="inline-error" role="alert">{error}</p>}
       {databaseReady && !error && genograms.length === 0 && (
-        <p className="empty-state">Noch keine gespeicherten Fälle. Nutze „Importieren“ in der Kopfzeile, um eine Excel-Datei zu laden.</p>
+        <div className="empty-state new-genogram-empty-state">
+          <p>Noch keine gespeicherten Fälle. Erstelle ein Genogramm von Grund auf oder importiere vorhandene Familiendaten.</p>
+          <button type="button" className="primary-button" onClick={() => setNewGenogramOpen(true)} disabled={!database}><Plus size={15} /> Neues Genogramm</button>
+        </div>
       )}
 
       {genograms.length > 0 && (
@@ -357,7 +378,7 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
             </header>
             <div className="dialog-body">
               <dl className="delete-case-details">
-                <div><dt>Importiert</dt><dd>{formatDateTime(deleteTarget.createdAt)}</dd></div>
+                <div><dt>Angelegt</dt><dd>{formatDateTime(deleteTarget.createdAt)}</dd></div>
                 <div><dt>Umfang</dt><dd>{deleteTarget.personCount} Personen · {deleteTarget.partnershipCount} Partnerschaften · {deleteTarget.parentChildLinkCount} Eltern-Kind-Verbindungen</dd></div>
               </dl>
               <p id="delete-case-warning" className="delete-warning">Dieser Fall und alle zugehörigen Personen und Beziehungen werden aus diesem Browser gelöscht. Diese Aktion kann nicht rückgängig gemacht werden. Andere Fälle bleiben erhalten.</p>
@@ -383,6 +404,12 @@ export default function SavedGenograms({ databaseReady, database, refreshKey, fi
           </section>
         </div>
       )}
+
+      {newGenogramOpen && <CreateGenogramDialog
+        database={database}
+        onCancel={() => setNewGenogramOpen(false)}
+        onCreated={handleGenogramCreated}
+      />}
     </section>
   );
 }
@@ -415,6 +442,9 @@ function GenogramView({
   const [stackTerminalChildren, setStackTerminalChildren] = useState(initialPreferences.stackTerminalChildren);
   const [generationGap, setGenerationGap] = useState(initialPreferences.generationGap);
   const [hideLastNames, setHideLastNames] = useState(initialPreferences.hideLastNames);
+  const [showGenerationCohorts, setShowGenerationCohorts] = useState(initialPreferences.showGenerationCohorts);
+  const [generationCohorts, setGenerationCohorts] = useState(initialPreferences.generationCohorts);
+  const [generationDialogOpen, setGenerationDialogOpen] = useState(false);
   const [collapsedGenogramNodes, setCollapsedGenogramNodes] = useState(() => initialPreferences.collapsedGenogramNodes);
   const [zoomByView, setZoomByView] = useState(initialPreferences.zoom);
   const zoom = zoomByView[orientation];
@@ -523,10 +553,12 @@ function GenogramView({
       stackTerminalChildren,
       generationGap,
       hideLastNames,
+      showGenerationCohorts,
+      generationCohorts,
       collapsedGenogramNodes,
       scroll: latest.scroll,
     });
-  }, [genogram.summary.id, orientation, zoomByView, wrapChildren, stackTerminalChildren, generationGap, hideLastNames, collapsedGenogramNodes]);
+  }, [genogram.summary.id, orientation, zoomByView, wrapChildren, stackTerminalChildren, generationGap, hideLastNames, showGenerationCohorts, generationCohorts, collapsedGenogramNodes]);
 
   useLayoutEffect(() => {
     const viewport = treeRef.current;
@@ -780,6 +812,9 @@ function GenogramView({
           onGenerationGapChange={setGenerationGap}
           hideLastNames={hideLastNames}
           onHideLastNamesChange={setHideLastNames}
+          showGenerationCohorts={showGenerationCohorts}
+          onShowGenerationCohortsChange={setShowGenerationCohorts}
+          onOpenGenerationDialog={() => setGenerationDialogOpen(true)}
           zoomPercent={Math.round(zoom * 100)}
           onZoomChange={(percent) => setZoom(percent / 100)}
           onFitWholeTree={fitWholeTree}
@@ -810,6 +845,7 @@ function GenogramView({
           <button type="button" className="secondary-button genogram-print-button" onClick={() => setPrintDialogOpen(true)}><Printer size={15} /> PDF exportieren</button>
         </div>
       </div>
+      {generationDialogOpen && <GenerationCohortDialog cohorts={generationCohorts} onClose={() => setGenerationDialogOpen(false)} onSave={(next) => { setGenerationCohorts(next); setGenerationDialogOpen(false); }} />}
       {printDialogOpen && <GenogramPrintDialog genogram={genogram} tree={tree} appearance={appearance} hideLastNames={hideLastNames} onClose={() => setPrintDialogOpen(false)} />}
       {tree.length === 0 ? (
         <p className="empty-state">In diesem Fall wurden keine darstellbaren Personen gefunden.</p>
@@ -854,7 +890,7 @@ function GenogramView({
               >
                 {connectors.paths.map((path, index) => <path key={index} d={path.d} className={`parentage-${path.relationshipType ?? 'unspecified'}`} />)}
               </svg>}
-              {tree.map((group) => <GenogramGroupView key={group.id} group={group} hideLastNames={hideLastNames} collapsedNodes={collapsedGenogramNodes} appearance={appearance} onNodeToggle={(id, open) => {
+              {tree.map((group) => <GenogramGroupView key={group.id} group={group} hideLastNames={hideLastNames} collapsedNodes={collapsedGenogramNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={(id, open) => {
                 setCollapsedGenogramNodes((current) => open ? current.filter((nodeId) => nodeId !== id) : current.includes(id) ? current : [...current, id]);
               }} genogramId={genogram.summary.id} database={database} onDataChanged={onDataChanged} />)}
               <div className="genogram-legend" aria-label="Legende">
@@ -867,6 +903,10 @@ function GenogramView({
                 <span><i className="genogram-legend-line" aria-hidden="true" /> Biologische / ungeklärte Elternschaft</span>
                 <span><i className="genogram-legend-line genogram-legend-dashed" aria-hidden="true" /> Adoptiv- oder Stiefelternschaft</span>
                 <span><i className="genogram-legend-line genogram-legend-dotted" aria-hidden="true" /> Pflege- oder soziale Elternschaft</span>
+                {showGenerationCohorts && generationCohorts.length > 0 && <div className="genogram-generation-legend">
+                  <strong>Generationen (Geburtsjahre)</strong>
+                  {generationCohorts.map((cohort, index) => <span key={cohort.id}><i className="genogram-generation-swatch" style={{ backgroundColor: cohortColors[index % cohortColors.length] }} aria-hidden="true" />{cohort.name} · {cohort.fromYear}–{cohort.toYear}</span>)}
+                </div>}
                 <small>Geschlecht, biologische Elternschaft und nicht dokumentierte Beziehungsdetails werden nicht abgeleitet.</small>
               </div>
             </div>
@@ -1010,11 +1050,13 @@ function hasClosedGenogramAncestor(element: HTMLElement, canvas: HTMLElement): b
   return false;
 }
 
-function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, onNodeToggle, genogramId, database, onDataChanged }: {
+function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
   group: FamilyTreeGroup;
   hideLastNames: boolean;
   collapsedNodes: string[];
   appearance: GenogramAppearance;
+  showGenerationCohorts: boolean;
+  generationCohorts: GenerationCohort[];
   onNodeToggle: (id: string, open: boolean) => void;
   genogramId: string;
   database: LocalDatabaseClient | null;
@@ -1028,7 +1070,8 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, o
       <summary className="genogram-union">
         <span className="genogram-disclosure" aria-hidden="true" />
         {group.partners.map((person, index) => (
-          <div className={`genogram-person ${genogramPersonCardClass(person.gender)}${person.deathDate ? ' deceased' : ''}`} data-person-id={person.id} key={person.id} style={personAppearanceStyle(appearance.personColors[person.id])}>
+          <div className={`genogram-person ${genogramPersonCardClass(person.gender)}${person.deathDate ? ' deceased' : ''}`} data-person-id={person.id} key={person.id} style={{ ...personAppearanceStyle(appearance.personColors[person.id]), ...generationStyle(person.birthDate, showGenerationCohorts, generationCohorts) }}>
+            {showGenerationCohorts && cohortForYear(person.birthDate, generationCohorts) && <span className="genogram-cohort-label">{cohortForYear(person.birthDate, generationCohorts)!.name}</span>}
             <button type="button" className="genogram-name-button" onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -1046,7 +1089,7 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, o
         {hasChildren && <span className="genogram-child-count">{group.children.length} {group.children.length === 1 ? 'Kind' : 'Kinder'}</span>}
       </summary>
       {hasChildren && <div className="genogram-children" style={branchAppearanceStyle(group.partners.map((person) => appearance.branchColors[person.id]).find(Boolean))}>
-        {group.children.map((child) => <GenogramPersonView key={child.person.id} branch={child} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />)}
+        {group.children.map((child) => <GenogramPersonView key={child.person.id} branch={child} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />)}
       </div>}
     </details>
     {editing && <FamilyNodeEditor group={group} genogramId={genogramId} database={database} onCancel={() => setEditing(false)} onSaved={() => {
@@ -1057,11 +1100,13 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, appearance, o
   );
 }
 
-function GenogramPersonView({ branch, hideLastNames, collapsedNodes, appearance, onNodeToggle, genogramId, database, onDataChanged }: {
+function GenogramPersonView({ branch, hideLastNames, collapsedNodes, appearance, showGenerationCohorts, generationCohorts, onNodeToggle, genogramId, database, onDataChanged }: {
   branch: FamilyTreePerson;
   hideLastNames: boolean;
   collapsedNodes: string[];
   appearance: GenogramAppearance;
+  showGenerationCohorts: boolean;
+  generationCohorts: GenerationCohort[];
   onNodeToggle: (id: string, open: boolean) => void;
   genogramId: string;
   database: LocalDatabaseClient | null;
@@ -1075,7 +1120,8 @@ function GenogramPersonView({ branch, hideLastNames, collapsedNodes, appearance,
   <div className="genogram-person-branch" data-child-id={branch.person.id}
     data-parent-ids={branch.parentLinks.map((link) => link.parentId).join(',')}
     data-parent-types={JSON.stringify(parentTypes)}>
-    {hasFamily ? branch.unions.map((union) => <GenogramGroupView key={union.id} group={union} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />) : <div className={`genogram-person genogram-leaf ${genogramPersonCardClass(branch.person.gender)}${branch.person.deathDate ? ' deceased' : ''}`} data-person-id={branch.person.id} style={personAppearanceStyle(appearance.personColors[branch.person.id])}>
+    {hasFamily ? branch.unions.map((union) => <GenogramGroupView key={union.id} group={union} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />) : <div className={`genogram-person genogram-leaf ${genogramPersonCardClass(branch.person.gender)}${branch.person.deathDate ? ' deceased' : ''}`} data-person-id={branch.person.id} style={{ ...personAppearanceStyle(appearance.personColors[branch.person.id]), ...generationStyle(branch.person.birthDate, showGenerationCohorts, generationCohorts) }}>
+      {showGenerationCohorts && cohortForYear(branch.person.birthDate, generationCohorts) && <span className="genogram-cohort-label">{cohortForYear(branch.person.birthDate, generationCohorts)!.name}</span>}
       <button type="button" className="genogram-name-button" onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -1200,6 +1246,9 @@ function ViewMenu({
   onGenerationGapChange,
   hideLastNames,
   onHideLastNamesChange,
+  showGenerationCohorts,
+  onShowGenerationCohortsChange,
+  onOpenGenerationDialog,
   zoomPercent,
   onZoomChange,
   onFitWholeTree,
@@ -1221,6 +1270,9 @@ function ViewMenu({
   onGenerationGapChange: (gap: number) => void;
   hideLastNames: boolean;
   onHideLastNamesChange: (hide: boolean) => void;
+  showGenerationCohorts: boolean;
+  onShowGenerationCohortsChange: (show: boolean) => void;
+  onOpenGenerationDialog: () => void;
   zoomPercent: number;
   onZoomChange: (percent: number) => void;
   onFitWholeTree: () => void;
@@ -1280,6 +1332,11 @@ function ViewMenu({
               <input type="checkbox" checked={hideLastNames} onChange={(event) => onHideLastNamesChange(event.currentTarget.checked)} />
               <span>Nachnamen ausblenden</span>
             </label>
+            <label className="wrap-children-option">
+              <input type="checkbox" checked={showGenerationCohorts} onChange={(event) => onShowGenerationCohortsChange(event.currentTarget.checked)} />
+              <span>Generationen im Hintergrund anzeigen</span>
+            </label>
+            <button type="button" className="generation-settings-button" onClick={onOpenGenerationDialog}><Layers3 size={14} /> Generationen bearbeiten …</button>
             <label className="generation-gap-control">
               <span>Abstand zwischen Generationen <output>{generationGap} px</output></span>
               <input type="range" min="30" max="180" step="5" value={generationGap} onChange={(event) => onGenerationGapChange(Number(event.currentTarget.value))} aria-label="Abstand zwischen Generationen" />
@@ -1309,6 +1366,56 @@ function ViewMenu({
     </details>,
     host,
   );
+}
+
+function GenerationCohortDialog({ cohorts, onClose, onSave }: { cohorts: GenerationCohort[]; onClose: () => void; onSave: (cohorts: GenerationCohort[]) => void }) {
+  const [draft, setDraft] = useState(() => cohorts.map((cohort) => ({ ...cohort })));
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
+
+  function update(index: number, field: keyof GenerationCohort, value: string) {
+    setDraft((current) => current.map((cohort, cohortIndex) => cohortIndex !== index ? cohort : {
+      ...cohort,
+      [field]: field === 'name' ? value : Number(value),
+    }));
+  }
+
+  function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (draft.some((cohort) => !cohort.name.trim() || !Number.isInteger(cohort.fromYear) || !Number.isInteger(cohort.toYear) || cohort.fromYear < 1 || cohort.toYear > 9999 || cohort.fromYear > cohort.toYear)) {
+      setError('Bitte prüfe Namen und Zeiträume. Das Von-Jahr muss kleiner oder gleich dem Bis-Jahr sein.');
+      return;
+    }
+    const ordered = [...draft].sort((a, b) => a.fromYear - b.fromYear);
+    if (ordered.some((cohort, index) => index > 0 && cohort.fromYear <= ordered[index - 1]!.toYear)) {
+      setError('Die Zeiträume dürfen sich nicht überschneiden.');
+      return;
+    }
+    onSave(draft.map((cohort) => ({ ...cohort, name: cohort.name.trim() })));
+  }
+
+  return <div className="editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="generation-dialog" role="dialog" aria-modal="true" aria-labelledby="generation-dialog-title" onSubmit={save}>
+      <header className="dialog-header"><div><p className="eyebrow">Genogramm-Ansicht</p><h3 id="generation-dialog-title">Generationen festlegen</h3><p className="generation-dialog-intro">Die Zeiträume beziehen sich auf das Geburtsjahr und können angepasst werden.</p></div><button type="button" className="icon-button" aria-label="Dialog schließen" onClick={onClose}><X size={18} /></button></header>
+      <div className="dialog-body generation-dialog-body">
+        {draft.map((cohort, index) => <div className="generation-editor-row" key={cohort.id}>
+          <label><span>Name</span><input maxLength={60} value={cohort.name} onChange={(event) => update(index, 'name', event.currentTarget.value)} /></label>
+          <label><span>Von</span><input type="number" min="1" max="9999" value={cohort.fromYear} onChange={(event) => update(index, 'fromYear', event.currentTarget.value)} /></label>
+          <label><span>Bis</span><input type="number" min="1" max="9999" value={cohort.toYear} onChange={(event) => update(index, 'toYear', event.currentTarget.value)} /></label>
+          <button type="button" className="generation-remove-button" aria-label={`${cohort.name} entfernen`} title="Generation entfernen" onClick={() => setDraft((current) => current.filter((_, i) => i !== index))}><Trash2 size={15} /></button>
+        </div>)}
+        {draft.length === 0 && <p className="generation-empty">Noch keine Generationen angelegt.</p>}
+        <button type="button" className="generation-add-button" onClick={() => setDraft((current) => [...current, { id: `cohort-${crypto.randomUUID()}`, name: 'Neue Generation', fromYear: 2027, toYear: 2040 }])}><Plus size={15} /> Generation hinzufügen</button>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <small>Voreinstellungen orientieren sich an verbreiteten Kohortengrenzen. Diese unterscheiden sich je nach Quelle; sie sind keine festen fachlichen Definitionen.</small>
+      </div>
+      <footer className="dialog-footer"><button type="button" className="secondary-button" onClick={onClose}>Abbrechen</button><button type="submit" className="primary-button">Übernehmen</button></footer>
+    </form>
+  </div>;
 }
 
 function FamilyGroup({
@@ -1634,6 +1741,91 @@ function AddFamilyMemberDialog({ genogramId, kind, partner, parents, database, o
   ), document.body);
 }
 
+function CreateGenogramDialog({ database, onCancel, onCreated }: {
+  database: LocalDatabaseClient | null;
+  onCancel: () => void;
+  onCreated: (genogramId: string) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
+  const [familyName, setFamilyName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [deathDate, setDeathDate] = useState('');
+  const [gender, setGender] = useState<GenogramPerson['gender']>('unknown');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsedBirthDate = parseCorrectionDate(birthDate);
+    const parsedDeathDate = parseCorrectionDate(deathDate);
+    if (!title.trim() || title.trim().length > 200 || !name.trim()
+      || parsedBirthDate === undefined || parsedDeathDate === undefined) {
+      setError(!title.trim() || title.trim().length > 200
+        ? 'Bitte gib einen Genogrammnamen mit höchstens 200 Zeichen ein.'
+        : 'Bitte gib einen Namen ein und prüfe die Datumsangaben (TT.MM.JJJJ, MM.JJJJ oder JJJJ).');
+      return;
+    }
+    if (!database) {
+      setError('Der lokale Speicher ist nicht verfügbar.');
+      return;
+    }
+
+    const input: NewGenogramInput = {
+      title: title.trim(),
+      rootPerson: {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        familyName: familyName.trim() || null,
+        birthDate: parsedBirthDate ?? null,
+        deathDate: parsedDeathDate ?? null,
+        gender,
+      },
+    };
+    setSaving(true);
+    setError(null);
+    try {
+      const genogramId = await database.createGenogram(input);
+      onCreated(genogramId);
+    } catch {
+      setError('Das Genogramm konnte nicht im lokalen Speicher angelegt werden.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return createPortal((
+    <div className="editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onCancel(); }}>
+      <form className="add-member-dialog" role="dialog" aria-modal="true" aria-labelledby="new-genogram-title" onSubmit={save}>
+        <header className="node-editor-heading dialog-header">
+          <div><p className="eyebrow">Neu beginnen</p><h3 id="new-genogram-title">Genogramm erstellen</h3></div>
+          <button type="button" className="icon-button" onClick={onCancel} disabled={saving} aria-label="Dialog schließen">×</button>
+        </header>
+        <div className="dialog-body add-member-body">
+          <div className="editor-fields">
+            <label>Genogrammname<input autoFocus required maxLength={200} value={title} onChange={(event) => setTitle(event.currentTarget.value)} /></label>
+            <label>Name der ersten Person<input required value={name} onChange={(event) => setName(event.currentTarget.value)} /></label>
+            <label>Familienname<input value={familyName} onChange={(event) => setFamilyName(event.currentTarget.value)} /></label>
+            <label>Geburtsdatum<input placeholder="TT.MM.JJJJ, MM.JJJJ oder JJJJ" value={birthDate} onChange={(event) => setBirthDate(event.currentTarget.value)} /></label>
+            <label>Todesdatum<input placeholder="TT.MM.JJJJ, MM.JJJJ oder JJJJ" value={deathDate} onChange={(event) => setDeathDate(event.currentTarget.value)} /></label>
+            <label>Geschlecht (für Genogramm-Symbol)
+              <select value={gender} onChange={(event) => setGender(event.currentTarget.value as GenogramPerson['gender'])}>
+                <option value="unknown">Unbekannt / keine Angabe</option><option value="female">Weiblich</option><option value="male">Männlich</option><option value="nonbinary">Nicht-binär</option>
+              </select>
+            </label>
+          </div>
+          <p className="editor-privacy-note">Die erste Person wird als Wurzel angelegt. Partner und Kinder kannst du anschließend am Knoten ergänzen. Die Daten bleiben in diesem Browser.</p>
+          {error && <p className="form-error" role="alert">{error}</p>}
+        </div>
+        <footer className="dialog-footer">
+          <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>Abbrechen</button>
+          <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Wird angelegt …' : 'Genogramm anlegen'}</button>
+        </footer>
+      </form>
+    </div>
+  ), document.body);
+}
+
 function FamilyNodeEditor({
   group,
   genogramId,
@@ -1945,6 +2137,22 @@ function genogramPersonName(person: GenogramPerson, hideLastName: boolean): stri
 
 function genogramPersonCardClass(gender: GenogramPerson['gender']): string {
   return gender === 'female' ? 'female' : gender === 'male' ? 'male' : gender === 'nonbinary' ? 'nonbinary' : 'unknown';
+}
+
+const cohortColors = ['#72a889', '#6b9fbd', '#9784b8', '#ca8292', '#d69a61', '#bea84f', '#5c9b9d'];
+
+function cohortForYear(birthDate: string | null | undefined, cohorts: GenerationCohort[]): GenerationCohort | undefined {
+  if (!birthDate) return undefined;
+  const year = Number(birthDate.slice(0, 4));
+  if (!Number.isInteger(year)) return undefined;
+  return cohorts.find((cohort) => year >= cohort.fromYear && year <= cohort.toYear);
+}
+
+function generationStyle(birthDate: string | null | undefined, enabled: boolean, cohorts: GenerationCohort[]): React.CSSProperties {
+  if (!enabled) return {};
+  const cohort = cohortForYear(birthDate, cohorts);
+  if (!cohort) return {};
+  return { '--cohort-color': cohortColors[cohorts.indexOf(cohort) % cohortColors.length] } as React.CSSProperties;
 }
 
 function parentageType(value: string | undefined): ParentageType {

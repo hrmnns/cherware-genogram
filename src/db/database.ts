@@ -1,5 +1,5 @@
 import type { ImportEntryDraft, ImportSummary } from '../domain/model';
-import type { AddFamilyMemberInput, FamilyNodeCorrection, GenogramDetail, GenogramSummary } from '../domain/savedGenogram';
+import type { AddFamilyMemberInput, FamilyNodeCorrection, GenogramDetail, GenogramSummary, NewGenogramInput } from '../domain/savedGenogram';
 import type { GenogramArchiveV1 } from '../backup/archive';
 import type { DatabaseCommand, DatabaseRequest, DatabaseStatus, DatabaseWorkerMessage } from './protocol';
 
@@ -10,6 +10,7 @@ export interface LocalDatabaseClient {
   renameGenogram(genogramId: string, title: string): Promise<void>;
   updateFamilyNode(correction: FamilyNodeCorrection): Promise<void>;
   addFamilyMember(input: AddFamilyMemberInput): Promise<void>;
+  createGenogram(input: NewGenogramInput): Promise<string>;
   exportGenogram(genogramId: string): Promise<GenogramArchiveV1 | null>;
   importGenogramArchive(archive: GenogramArchiveV1): Promise<string>;
   deleteFamilyBranch(genogramId: string, rootPersonIds: string[]): Promise<void>;
@@ -87,6 +88,12 @@ export function openLocalDatabase(
     addFamilyMember(input) {
       return sendRequest({ type: 'add-family-member', input }).then((message) => {
         if (message.type !== 'family-member-added') throw new Error('Unexpected database response');
+      });
+    },
+    createGenogram(input) {
+      return sendRequest({ type: 'create-genogram', input }).then((message) => {
+        if (message.type !== 'genogram-created') throw new Error('Unexpected database response');
+        return message.genogramId;
       });
     },
     exportGenogram(genogramId) {
