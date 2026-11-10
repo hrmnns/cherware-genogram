@@ -12,7 +12,7 @@ import { readLastGenogramId, readViewPreferences, writeLastGenogramId, writeView
 import type { GenerationCohort, GenogramViewPreferences, ViewOrientation } from './viewPreferences';
 import { filterGenogramAppearance, readGenogramAppearance, writeGenogramAppearance } from './appearance';
 import type { GenogramAppearance } from './appearance';
-import { createGenogramPrintSvg } from './printSvg';
+import { createGenogramPrintSvg, createPosterPrintPages } from './printSvg';
 import type {
   AddFamilyMemberInput,
   EditableDate,
@@ -899,7 +899,7 @@ function GenogramView({
         </div>
       </div>
       {generationDialogOpen && <GenerationCohortDialog cohorts={generationCohorts} onClose={() => setGenerationDialogOpen(false)} onSave={(next) => { setGenerationCohorts(next); setGenerationDialogOpen(false); }} />}
-      {printDialogOpen && <GenogramPrintDialog genogram={genogram} tree={tree} appearance={appearance} hideLastNames={hideLastNames} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onClose={() => setPrintDialogOpen(false)} />}
+      {printDialogOpen && <GenogramPrintDialog genogram={genogram} tree={tree} appearance={appearance} hideLastNames={hideLastNames} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} generationGap={generationGap} onClose={() => setPrintDialogOpen(false)} />}
       {tree.length === 0 ? (
         <p className="empty-state">In diesem Fall wurden keine darstellbaren Personen gefunden.</p>
       ) : (
@@ -1565,23 +1565,33 @@ function branchAppearanceStyle(color: string | undefined): React.CSSProperties |
   return color ? { '--branch-color': color } as React.CSSProperties : undefined;
 }
 
-function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, onClose }: {
+function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, generationGap, onClose }: {
   genogram: GenogramDetail;
   tree: FamilyTreeGroup[];
   appearance: GenogramAppearance;
   hideLastNames: boolean;
   showGenerationCohorts: boolean;
   generationCohorts: GenerationCohort[];
+  generationGap: number;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<'single' | 'poster'>('single');
   const [width, setWidth] = useState(1000);
   const [height, setHeight] = useState(700);
+  const [printGenerationGap, setPrintGenerationGap] = useState(generationGap);
+  const [paperFormat, setPaperFormat] = useState<'A4' | 'A3'>('A4');
+  const [overlapMm, setOverlapMm] = useState(10);
+  const [showPosterInfo, setShowPosterInfo] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const validDimensions = Number.isFinite(width) && Number.isFinite(height) && width >= 200 && width <= 5000 && height >= 200 && height <= 5000;
-  const layout = validDimensions ? createGenogramPrintSvg(genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, width, height) : null;
+  const posterPageWidth = paperFormat === 'A4' ? 210 : 297;
+  const posterPageHeight = paperFormat === 'A4' ? 297 : 420;
+  const validDimensions = mode === 'poster' || (Number.isFinite(width) && Number.isFinite(height) && width >= 200 && width <= 5000 && height >= 200 && height <= 5000);
+  const layout = validDimensions ? createGenogramPrintSvg(genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, printGenerationGap, mode === 'poster' ? 1000 : width, mode === 'poster' ? 700 : height) : null;
+  const poster = mode === 'poster' && layout ? createPosterPrintPages(layout, genogram.summary.title, posterPageWidth, posterPageHeight, overlapMm, showPosterInfo) : null;
+  const posterTextPt = poster ? 10 * poster.scale * 72 / 25.4 : 0;
 
   function openPrintDialog() {
-    if (!layout) return;
+    if (!layout || (mode === 'poster' && !poster)) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       setError('Das Druckfenster wurde blockiert. Bitte Pop-ups für diese App erlauben und erneut versuchen.');
@@ -1589,7 +1599,15 @@ function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGe
     }
     const safeTitle = genogram.summary.title.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
     printWindow.document.open();
-    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>@page{size:${width}mm ${height}mm;margin:0}html,body{width:${width}mm;height:${height}mm;margin:0!important;padding:0!important;background:#fff}svg{display:block;width:${width}mm;height:${height}mm;print-color-adjust:exact;-webkit-print-color-adjust:exact}</style></head><body>${layout.svg}<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},300)})</script></body></html>`);
+    const documentBody = mode === 'poster'
+      ? poster!.pages.map((page) => `<section class="poster-sheet">${page}</section>`).join('')
+      : layout.svg;
+    const pageWidth = mode === 'poster' ? posterPageWidth : width;
+    const pageHeight = mode === 'poster' ? posterPageHeight : height;
+    const pageStyles = mode === 'poster'
+      ? `.poster-sheet{width:${pageWidth}mm;height:${pageHeight}mm;break-after:page;page-break-after:always;overflow:hidden}.poster-sheet:last-child{break-after:auto;page-break-after:auto}.poster-sheet svg{display:block;width:${pageWidth}mm;height:${pageHeight}mm;print-color-adjust:exact;-webkit-print-color-adjust:exact}`
+      : `body>svg{display:block;width:${pageWidth}mm;height:${pageHeight}mm;print-color-adjust:exact;-webkit-print-color-adjust:exact}`;
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>@page{size:${pageWidth}mm ${pageHeight}mm;margin:0}html,body{width:${pageWidth}mm;margin:0!important;padding:0!important;background:#fff}${pageStyles}</style></head><body>${documentBody}<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},300)})</script></body></html>`);
     printWindow.document.close();
     // The print UI can keep the popup focused or block interaction with the
     // opener. Close our in-app dialog as soon as the print window is ready.
@@ -1600,18 +1618,34 @@ function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGe
     <section className="print-export-dialog" role="dialog" aria-modal="true" aria-labelledby="print-export-title">
       <header className="dialog-header"><div><p className="eyebrow">Druckexport</p><h3 id="print-export-title">Genogramm als PDF</h3></div><button type="button" className="icon-button" onClick={onClose} aria-label="PDF-Export schließen">×</button></header>
       <div className="dialog-body print-export-body">
-        <div className="print-export-controls">
-          <label>Breite (mm)<input type="number" min="200" max="5000" step="10" value={width} onChange={(event) => setWidth(Number(event.currentTarget.value))} /></label>
-          <label>Höhe (mm)<input type="number" min="200" max="5000" step="10" value={height} onChange={(event) => setHeight(Number(event.currentTarget.value))} /></label>
-          <p>Einseitiges Sonderformat · Vektorgrafik · alle Generationen</p>
+        <div className="print-mode-switch" role="group" aria-label="Druckmodus">
+          <button type="button" className={mode === 'single' ? 'is-active' : ''} aria-pressed={mode === 'single'} onClick={() => setMode('single')}>Einzelseite</button>
+          <button type="button" className={mode === 'poster' ? 'is-active' : ''} aria-pressed={mode === 'poster'} onClick={() => setMode('poster')}>Poster auf mehreren Blättern</button>
         </div>
-        {layout && <div className="print-preview-frame" aria-label="Druckvorschau"><div className="print-preview-svg" dangerouslySetInnerHTML={{ __html: layout.svg }} /></div>}
+        <div className="print-export-controls">
+          {mode === 'single' ? <>
+            <label>Breite (mm)<input type="number" min="200" max="5000" step="10" value={width} onChange={(event) => setWidth(Number(event.currentTarget.value))} /></label>
+            <label>Höhe (mm)<input type="number" min="200" max="5000" step="10" value={height} onChange={(event) => setHeight(Number(event.currentTarget.value))} /></label>
+            <p>Einseitiges Sonderformat · Vektorgrafik · alle Generationen</p>
+          </> : <>
+            <label>Papierformat<select value={paperFormat} onChange={(event) => setPaperFormat(event.currentTarget.value as 'A4' | 'A3')}><option value="A4">A4 Hochformat</option><option value="A3">A3 Hochformat</option></select></label>
+            <label className="print-gap-control"><span>Überlappung <output>{overlapMm} mm</output></span><input type="range" min="0" max="20" step="2" value={overlapMm} onChange={(event) => setOverlapMm(Number(event.currentTarget.value))} aria-label="Überlappung der Posterblätter" /></label>
+            <label className="print-poster-info-toggle"><input type="checkbox" checked={showPosterInfo} onChange={(event) => setShowPosterInfo(event.currentTarget.checked)} /><span>Seitentitel, Nummerierung und Montagehinweis einblenden</span></label>
+            <p>Hochformat · {poster?.columns ?? 0} Blätter nebeneinander · zum Zusammenfügen von links nach rechts</p>
+          </>}
+          <label className="print-gap-control"><span>Generationenabstand <output>{printGenerationGap} px</output></span><input type="range" min="30" max="180" step="5" value={printGenerationGap} onChange={(event) => setPrintGenerationGap(Number(event.currentTarget.value))} aria-label="Generationenabstand im PDF" /></label>
+        </div>
+        {mode === 'single' && layout && <div className="print-preview-frame" aria-label="Druckvorschau"><div className="print-preview-svg" dangerouslySetInnerHTML={{ __html: layout.svg }} /></div>}
+        {mode === 'poster' && poster && <div className="poster-preview-strip" aria-label={`Poster-Vorschau mit ${poster.pages.length} Blättern`}>
+          {poster.pages.map((page, index) => <div className="poster-preview-page" key={index} style={{ aspectRatio: `${posterPageWidth} / ${posterPageHeight}` }} dangerouslySetInnerHTML={{ __html: page }} />)}
+        </div>}
         {!validDimensions && <p className="inline-error" role="alert">Breite und Höhe müssen zwischen 200 und 5.000 mm liegen.</p>}
-        {layout && layout.smallestTextPt < 8 && <p className="print-size-warning" role="status">Bei diesem Format wird die Schrift voraussichtlich nur ca. {layout.smallestTextPt.toFixed(1)} pt groß. Für gute Lesbarkeit bitte das Endformat vergrößern.</p>}
+        {mode === 'single' && layout && layout.smallestTextPt < 8 && <p className="print-size-warning" role="status">Bei diesem Format wird die Schrift voraussichtlich nur ca. {layout.smallestTextPt.toFixed(1)} pt groß. Für gute Lesbarkeit bitte das Endformat vergrößern.</p>}
+        {mode === 'poster' && poster && posterTextPt < 8 && <p className="print-size-warning" role="status">Bei diesem Papierformat wird die Schrift voraussichtlich nur ca. {posterTextPt.toFixed(1)} pt groß. A3 kann die Lesbarkeit verbessern.</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <p className="print-export-note">Der PDF-Export öffnet den lokalen Druckdialog. Dort „Als PDF speichern“ wählen. Die Ausgabe ist vektorbasiert; die Druckerei kann eigene Anforderungen an PDF/X, Farbprofil und Beschnitt haben.</p>
+        <p className="print-export-note">Der PDF-Export öffnet den lokalen Druckdialog. Dort „Als PDF speichern“ wählen. Posterblätter werden hochkant ausgegeben und enthalten Überlappung zum Ausrichten. Browser-Kopf- und Fußzeilen im Druckdialog bitte deaktivieren.</p>
       </div>
-      <footer className="dialog-footer"><button type="button" className="secondary-button print-dialog-button" onClick={onClose}>Abbrechen</button><button type="button" className="primary-button print-dialog-button" onClick={openPrintDialog} disabled={!layout}>PDF erstellen</button></footer>
+      <footer className="dialog-footer"><button type="button" className="secondary-button print-dialog-button" onClick={onClose}>Abbrechen</button><button type="button" className="primary-button print-dialog-button" onClick={openPrintDialog} disabled={!layout || (mode === 'poster' && !poster)}>PDF erstellen</button></footer>
     </section>
   </div>;
 }

@@ -668,3 +668,19 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 **Korrektur:** Die Hover- und Fokusflächen der Datei-, Ansicht- und Über-Menüpunkte füllen jetzt jeweils bündig ihre gesamte Höhe aus. Innenabstände und Rundungen folgen der gemeinsamen Menükontur; die Trenner bleiben konsistent.
 
 **Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-10 - Generationenabstand im PDF einstellen
+
+**Umsetzung:** Der PDF-Export übernimmt den aktuellen Generationenabstand als Startwert und bietet einen eigenen Regler. Vorschau, Knotenpositionen und benötigte Seitenhöhe werden mit dem gewählten Wert neu berechnet.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-10 - Mehrseitigen Poster-Druck ergänzen
+
+**Umsetzung:** Der PDF-Dialog bietet neben dem Sonderformat einen Poster-Modus für A4/A3 im Hochformat. Das Layout wird maßstabsgetreu auf Seitenkacheln verteilt, mit einstellbarer Überlappung, Teilnummern und Vorschau; Generationenabstand und Vektorqualität bleiben erhalten.
+
+**Überprüfung:** Produktionsbuild und `git diff --check` erfolgreich.
+
+## 2026-11-10 - Poster-Seitenhinweise optional ausblenden
+
+**Änderung:** Seitentitel, Teilnummerierung und Montagehinweis lassen sich im Poster-Druckdialog gemeinsam ausblenden.

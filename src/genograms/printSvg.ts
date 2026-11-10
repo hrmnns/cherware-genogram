@@ -7,10 +7,15 @@ const cardHeight = 154;
 const partnerGap = 44;
 const siblingGap = 34;
 const unionGap = 24;
-const generationGap = 96;
 const branchFramePadding = 14;
 
-interface PrintLayout { width: number; height: number; svg: string; smallestTextPt: number; }
+interface PrintLayout { width: number; height: number; svg: string; content: string; smallestTextPt: number; }
+
+export interface PosterPrintLayout {
+  pages: string[];
+  scale: number;
+  columns: number;
+}
 
 export function createGenogramPrintSvg(
   genogram: GenogramDetail,
@@ -19,6 +24,7 @@ export function createGenogramPrintSvg(
   hideLastNames: boolean,
   showGenerationCohorts: boolean,
   generationCohorts: GenerationCohort[],
+  generationGap: number,
   pageWidthMm: number,
   pageHeightMm: number,
 ): PrintLayout {
@@ -215,7 +221,36 @@ export function createGenogramPrintSvg(
   const generationLegendTitle = showGenerationCohorts && generationCohorts.length ? `<text x="${margin}" y="${legendY - 39 - generationCohorts.length * 13}" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" fill="#40544a">Generationen (Geburtsjahre)</text>` : '';
   const content = `<rect width="100%" height="100%" fill="#ffffff"/><text x="${margin}" y="34" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#173c36">${title}</text>${body.join('')}${generationLegendTitle}${generationLegend}<line x1="${margin}" y1="${legendY - 22}" x2="${svgWidth - margin}" y2="${legendY - 22}" stroke="#dce5dd"/><circle cx="${margin + 8}" cy="${legendY}" r="7" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 25}" y="${legendY - 7}" width="14" height="14" fill="#f4f8f4" stroke="#578d72"/><rect x="${margin + 48}" y="${legendY - 5}" width="10" height="10" transform="rotate(45 ${margin + 53} ${legendY})" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="2 1"/><rect x="${margin + 70}" y="${legendY - 7}" width="14" height="14" rx="4" fill="#f4f8f4" stroke="#578d72" stroke-dasharray="1 2"/><text x="${margin + 77}" y="${legendY + 3.5}" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#566a5e">?</text><text x="${margin + 92}" y="${legendY + 4}" font-family="Inter, Arial, sans-serif" font-size="10" fill="#566a5e">weiblich · männlich · nicht-binär · unbekannt</text>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidthMm}mm" height="${pageHeightMm}mm" viewBox="0 0 ${svgWidth} ${svgHeight}" preserveAspectRatio="xMidYMid meet">${content}</svg>`;
-  return { width: svgWidth, height: svgHeight, svg, smallestTextPt };
+  return { width: svgWidth, height: svgHeight, svg, content, smallestTextPt };
+}
+
+export function createPosterPrintPages(
+  layout: PrintLayout,
+  title: string,
+  pageWidthMm: number,
+  pageHeightMm: number,
+  overlapMm: number,
+  showInfo: boolean,
+): PosterPrintLayout {
+  const margin = 10;
+  const headerHeight = 8;
+  const footerHeight = 8;
+  const contentWidthMm = pageWidthMm - margin * 2;
+  const contentHeightMm = pageHeightMm - margin * 2 - headerHeight - footerHeight;
+  const scale = contentHeightMm / layout.height;
+  const viewportWidth = contentWidthMm / scale;
+  const stride = Math.max(1, (contentWidthMm - overlapMm) / scale);
+  const columns = Math.max(1, Math.ceil((layout.width - viewportWidth) / stride) + 1);
+  const safeTitle = escapeXml(title);
+  const pages = Array.from({ length: columns }, (_, index) => {
+    const x = index * stride;
+    const label = `Teil ${index + 1} von ${columns}`;
+    const header = showInfo ? `<text x="${margin}" y="${margin + 5}" font-family="Inter, Arial, sans-serif" font-size="3.2" font-weight="700" fill="#52685d">${safeTitle}</text><text x="${pageWidthMm - margin}" y="${margin + 5}" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="3" fill="#52685d">${label}</text>` : '';
+    const footer = showInfo ? `<line x1="${margin}" y1="${pageHeightMm - margin - footerHeight / 2}" x2="${pageWidthMm - margin}" y2="${pageHeightMm - margin - footerHeight / 2}" stroke="#e1e6e1" stroke-width=".25"/><text x="${margin}" y="${pageHeightMm - margin - 2}" font-family="Inter, Arial, sans-serif" font-size="2.6" fill="#718078">${overlapMm} mm Überlappung · von links nach rechts zusammenfügen</text><text x="${pageWidthMm - margin}" y="${pageHeightMm - margin - 2}" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="2.6" fill="#718078">${label}</text>` : '';
+    const inner = `<rect width="${pageWidthMm}" height="${pageHeightMm}" fill="#ffffff"/>${header}<svg x="${margin}" y="${margin + headerHeight}" width="${contentWidthMm}" height="${contentHeightMm}" viewBox="${x} 0 ${viewportWidth} ${layout.height}" preserveAspectRatio="none">${layout.content}</svg>${footer}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidthMm}mm" height="${pageHeightMm}mm" viewBox="0 0 ${pageWidthMm} ${pageHeightMm}">${inner}</svg>`;
+  });
+  return { pages, scale, columns };
 }
 
 function formatPrintDate(value: string, precision: string | null): string {
