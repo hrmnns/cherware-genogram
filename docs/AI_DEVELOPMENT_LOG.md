@@ -684,3 +684,15 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 ## 2026-11-10 - Poster-Seitenhinweise optional ausblenden
 
 **Änderung:** Seitentitel, Teilnummerierung und Montagehinweis lassen sich im Poster-Druckdialog gemeinsam ausblenden.
+
+## 2026-11-10 - Passmarken für Posterblätter
+
+**Änderung:** An den Überlappungsgrenzen werden dezente obere und untere Pass-/Schnittmarken ausgegeben. Die Markierungen können unabhängig von den Seitenhinweisen ein- und ausgeschaltet werden.
+
+## 2026-11-10 - Druckdialog-Einstellungen strukturieren
+
+**Änderung:** Die Poster-Einstellungen sind nun in Papierformat/Überlappung, Zusatzoptionen und Generationenabstand gruppiert; auf schmalen Fenstern wechseln die Gruppen in eine Spalte.
+
+## 2026-11-10 - Poster-Passmarken an Schnittkanten ausrichten
+
+**Korrektur:** Die Passmarken zeigen jetzt beide Grenzen der Überlappungszone an, einschließlich der tatsächlichen Kante, an der der Diagrammausschnitt endet. Obere und untere Marker sind dadurch an Bildausschnitt und Überlappung ausgerichtet.

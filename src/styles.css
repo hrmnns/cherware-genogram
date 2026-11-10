@@ -145,6 +145,12 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .print-mode-switch button { min-height: 32px; padding: 0 11px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #596b60; cursor: pointer; font: inherit; font-size: 11px; }
 .print-mode-switch button.is-active { border-color: #d9e5dc; background: #fff; color: #286b58; font-weight: 700; box-shadow: 0 1px 3px rgb(25 50 35 / 8%); }
 .print-export-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.print-export-controls.is-poster { display: grid; grid-template-columns: minmax(155px, .45fr) minmax(250px, 1fr); grid-template-areas: "paper overlap" "options options" "gap gap" "note note"; align-items: end; gap: 14px 20px; }
+.poster-paper-format { grid-area: paper; }
+.poster-overlap-control { grid-area: overlap; }
+.poster-info-options { display: grid; grid-area: options; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; padding: 11px 0; border-top: 1px solid #e9ece6; border-bottom: 1px solid #e9ece6; }
+.poster-layout-note { grid-area: note; margin: 0 !important; }
+.print-export-controls .poster-generation-gap { grid-area: gap; width: 100%; min-width: 0; padding-top: 1px; }
 .print-export-controls label { display: grid; gap: 5px; color: #53685d; font-size: 11px; font-weight: 650; }
 .print-export-controls input { box-sizing: border-box; width: 130px; min-height: 36px; padding: 6px 9px; border: 1px solid #d8ded7; border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
 .print-export-controls select { box-sizing: border-box; min-width: 150px; min-height: 36px; padding: 6px 9px; border: 1px solid #d8ded7; border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
@@ -644,6 +650,8 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 }
 
 @media (max-width: 640px) {
+  .print-export-controls.is-poster { grid-template-columns: minmax(0, 1fr); grid-template-areas: "paper" "overlap" "options" "gap" "note"; gap: 12px; }
+  .poster-info-options { grid-template-columns: minmax(0, 1fr); }
   .page-shell { width: 100%; }
   .topbar { height: 48px; flex-basis: 48px; padding: 0 10px; }
   .welcome-card { padding: 54px 0 38px; }

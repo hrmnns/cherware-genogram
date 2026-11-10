@@ -1582,12 +1582,13 @@ function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGe
   const [paperFormat, setPaperFormat] = useState<'A4' | 'A3'>('A4');
   const [overlapMm, setOverlapMm] = useState(10);
   const [showPosterInfo, setShowPosterInfo] = useState(true);
+  const [showPosterMarks, setShowPosterMarks] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const posterPageWidth = paperFormat === 'A4' ? 210 : 297;
   const posterPageHeight = paperFormat === 'A4' ? 297 : 420;
   const validDimensions = mode === 'poster' || (Number.isFinite(width) && Number.isFinite(height) && width >= 200 && width <= 5000 && height >= 200 && height <= 5000);
   const layout = validDimensions ? createGenogramPrintSvg(genogram, tree, appearance, hideLastNames, showGenerationCohorts, generationCohorts, printGenerationGap, mode === 'poster' ? 1000 : width, mode === 'poster' ? 700 : height) : null;
-  const poster = mode === 'poster' && layout ? createPosterPrintPages(layout, genogram.summary.title, posterPageWidth, posterPageHeight, overlapMm, showPosterInfo) : null;
+  const poster = mode === 'poster' && layout ? createPosterPrintPages(layout, genogram.summary.title, posterPageWidth, posterPageHeight, overlapMm, showPosterInfo, showPosterMarks) : null;
   const posterTextPt = poster ? 10 * poster.scale * 72 / 25.4 : 0;
 
   function openPrintDialog() {
@@ -1622,18 +1623,21 @@ function GenogramPrintDialog({ genogram, tree, appearance, hideLastNames, showGe
           <button type="button" className={mode === 'single' ? 'is-active' : ''} aria-pressed={mode === 'single'} onClick={() => setMode('single')}>Einzelseite</button>
           <button type="button" className={mode === 'poster' ? 'is-active' : ''} aria-pressed={mode === 'poster'} onClick={() => setMode('poster')}>Poster auf mehreren Blättern</button>
         </div>
-        <div className="print-export-controls">
+        <div className={`print-export-controls${mode === 'poster' ? ' is-poster' : ''}`}>
           {mode === 'single' ? <>
             <label>Breite (mm)<input type="number" min="200" max="5000" step="10" value={width} onChange={(event) => setWidth(Number(event.currentTarget.value))} /></label>
             <label>Höhe (mm)<input type="number" min="200" max="5000" step="10" value={height} onChange={(event) => setHeight(Number(event.currentTarget.value))} /></label>
             <p>Einseitiges Sonderformat · Vektorgrafik · alle Generationen</p>
           </> : <>
-            <label>Papierformat<select value={paperFormat} onChange={(event) => setPaperFormat(event.currentTarget.value as 'A4' | 'A3')}><option value="A4">A4 Hochformat</option><option value="A3">A3 Hochformat</option></select></label>
-            <label className="print-gap-control"><span>Überlappung <output>{overlapMm} mm</output></span><input type="range" min="0" max="20" step="2" value={overlapMm} onChange={(event) => setOverlapMm(Number(event.currentTarget.value))} aria-label="Überlappung der Posterblätter" /></label>
-            <label className="print-poster-info-toggle"><input type="checkbox" checked={showPosterInfo} onChange={(event) => setShowPosterInfo(event.currentTarget.checked)} /><span>Seitentitel, Nummerierung und Montagehinweis einblenden</span></label>
-            <p>Hochformat · {poster?.columns ?? 0} Blätter nebeneinander · zum Zusammenfügen von links nach rechts</p>
+            <label className="poster-paper-format">Papierformat<select value={paperFormat} onChange={(event) => setPaperFormat(event.currentTarget.value as 'A4' | 'A3')}><option value="A4">A4 Hochformat</option><option value="A3">A3 Hochformat</option></select></label>
+            <label className="print-gap-control poster-overlap-control"><span>Überlappung <output>{overlapMm} mm</output></span><input type="range" min="0" max="20" step="2" value={overlapMm} onChange={(event) => setOverlapMm(Number(event.currentTarget.value))} aria-label="Überlappung der Posterblätter" /></label>
+            <div className="poster-info-options">
+              <label className="print-poster-info-toggle"><input type="checkbox" checked={showPosterInfo} onChange={(event) => setShowPosterInfo(event.currentTarget.checked)} /><span>Seitentitel, Nummerierung und Montagehinweis einblenden</span></label>
+              <label className="print-poster-info-toggle"><input type="checkbox" checked={showPosterMarks} onChange={(event) => setShowPosterMarks(event.currentTarget.checked)} /><span>Pass-/Schnittmarken an den Überlappungen einblenden</span></label>
+            </div>
+            <p className="poster-layout-note">Hochformat · {poster?.columns ?? 0} Blätter nebeneinander · von links nach rechts zusammenfügen</p>
           </>}
-          <label className="print-gap-control"><span>Generationenabstand <output>{printGenerationGap} px</output></span><input type="range" min="30" max="180" step="5" value={printGenerationGap} onChange={(event) => setPrintGenerationGap(Number(event.currentTarget.value))} aria-label="Generationenabstand im PDF" /></label>
+          <label className={`print-gap-control${mode === 'poster' ? ' poster-generation-gap' : ''}`}><span>Generationenabstand <output>{printGenerationGap} px</output></span><input type="range" min="30" max="180" step="5" value={printGenerationGap} onChange={(event) => setPrintGenerationGap(Number(event.currentTarget.value))} aria-label="Generationenabstand im PDF" /></label>
         </div>
         {mode === 'single' && layout && <div className="print-preview-frame" aria-label="Druckvorschau"><div className="print-preview-svg" dangerouslySetInnerHTML={{ __html: layout.svg }} /></div>}
         {mode === 'poster' && poster && <div className="poster-preview-strip" aria-label={`Poster-Vorschau mit ${poster.pages.length} Blättern`}>

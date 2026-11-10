@@ -231,6 +231,7 @@ export function createPosterPrintPages(
   pageHeightMm: number,
   overlapMm: number,
   showInfo: boolean,
+  showMarks: boolean,
 ): PosterPrintLayout {
   const margin = 10;
   const headerHeight = 8;
@@ -247,7 +248,12 @@ export function createPosterPrintPages(
     const label = `Teil ${index + 1} von ${columns}`;
     const header = showInfo ? `<text x="${margin}" y="${margin + 5}" font-family="Inter, Arial, sans-serif" font-size="3.2" font-weight="700" fill="#52685d">${safeTitle}</text><text x="${pageWidthMm - margin}" y="${margin + 5}" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="3" fill="#52685d">${label}</text>` : '';
     const footer = showInfo ? `<line x1="${margin}" y1="${pageHeightMm - margin - footerHeight / 2}" x2="${pageWidthMm - margin}" y2="${pageHeightMm - margin - footerHeight / 2}" stroke="#e1e6e1" stroke-width=".25"/><text x="${margin}" y="${pageHeightMm - margin - 2}" font-family="Inter, Arial, sans-serif" font-size="2.6" fill="#718078">${overlapMm} mm Überlappung · von links nach rechts zusammenfügen</text><text x="${pageWidthMm - margin}" y="${pageHeightMm - margin - 2}" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="2.6" fill="#718078">${label}</text>` : '';
-    const inner = `<rect width="${pageWidthMm}" height="${pageHeightMm}" fill="#ffffff"/>${header}<svg x="${margin}" y="${margin + headerHeight}" width="${contentWidthMm}" height="${contentHeightMm}" viewBox="${x} 0 ${viewportWidth} ${layout.height}" preserveAspectRatio="none">${layout.content}</svg>${footer}`;
+    const seamMarkers = new Set([
+      ...(index > 0 ? [margin, margin + overlapMm] : []),
+      ...(index < columns - 1 ? [pageWidthMm - margin - overlapMm, pageWidthMm - margin] : []),
+    ]);
+    const marks = showMarks ? [...seamMarkers].map((markX) => `<path d="M ${markX - 2} ${margin + headerHeight} h 4 M ${markX} ${margin + headerHeight} v 4 M ${markX - 2} ${margin + headerHeight + contentHeightMm} h 4 M ${markX} ${margin + headerHeight + contentHeightMm} v -4" fill="none" stroke="#8d9b92" stroke-width=".35"/>`).join('') : '';
+    const inner = `<rect width="${pageWidthMm}" height="${pageHeightMm}" fill="#ffffff"/>${header}<svg x="${margin}" y="${margin + headerHeight}" width="${contentWidthMm}" height="${contentHeightMm}" viewBox="${x} 0 ${viewportWidth} ${layout.height}" preserveAspectRatio="none">${layout.content}</svg>${marks}${footer}`;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidthMm}mm" height="${pageHeightMm}mm" viewBox="0 0 ${pageWidthMm} ${pageHeightMm}">${inner}</svg>`;
   });
   return { pages, scale, columns };
