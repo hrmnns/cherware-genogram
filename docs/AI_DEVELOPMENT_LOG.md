@@ -696,3 +696,7 @@ Ziel dieses Protokolls ist ein später nachvollziehbarer Erfahrungsbericht. Fest
 ## 2026-11-10 - Poster-Passmarken an Schnittkanten ausrichten
 
 **Korrektur:** Die Passmarken zeigen jetzt beide Grenzen der Überlappungszone an, einschließlich der tatsächlichen Kante, an der der Diagrammausschnitt endet. Obere und untere Marker sind dadurch an Bildausschnitt und Überlappung ausgerichtet.
+
+## 2026-11-10 - Knotennamen an Kartenfläche anpassen
+
+**Umsetzung:** Namen im Genogramm und Druckexport werden abhängig von Wortlänge größer gesetzt und bei Bedarf umbrochen. Im PDF werden Schriftgrad und Umbruch zusätzlich auf die verfügbare Kartenhöhe abgestimmt, ohne Namen abzuschneiden.

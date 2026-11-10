@@ -13,6 +13,7 @@ import type { GenerationCohort, GenogramViewPreferences, ViewOrientation } from 
 import { filterGenogramAppearance, readGenogramAppearance, writeGenogramAppearance } from './appearance';
 import type { GenogramAppearance } from './appearance';
 import { createGenogramPrintSvg, createPosterPrintPages } from './printSvg';
+import { fitNameFontSize } from './nameLayout';
 import type {
   AddFamilyMemberInput,
   EditableDate,
@@ -1210,7 +1211,7 @@ function GenogramGroupView({ group, hideLastNames, collapsedNodes, selectedNodeI
         {group.partners.map((person, index) => (
           <div className={`genogram-person ${genogramPersonCardClass(person.gender)}${person.deathDate ? ' deceased' : ''}`} data-person-id={person.id} key={person.id} style={{ ...personAppearanceStyle(appearance.personColors[person.id]), ...generationStyle(person.birthDate, showGenerationCohorts, generationCohorts) }}>
             {showGenerationCohorts && cohortForYear(person.birthDate, generationCohorts) && <span className="genogram-cohort-label">{cohortForYear(person.birthDate, generationCohorts)!.name}</span>}
-            <button type="button" className="genogram-name-button" onClick={(event) => {
+            <button type="button" className="genogram-name-button" style={{ fontSize: fitNameFontSize(genogramPersonName(person, hideLastNames), 122, 20, 14) }} onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
               setEditing(true);
@@ -1502,7 +1503,7 @@ function GenogramPersonView({ branch, parentGroupId, hideLastNames, collapsedNod
     data-parent-types={JSON.stringify(parentTypes)}>
     {hasFamily ? branch.unions.map((union) => <GenogramGroupView key={union.id} group={union} hideLastNames={hideLastNames} collapsedNodes={collapsedNodes} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} appearance={appearance} showGenerationCohorts={showGenerationCohorts} generationCohorts={generationCohorts} onNodeToggle={onNodeToggle} genogramId={genogramId} database={database} onDataChanged={onDataChanged} />) : <div className={`genogram-person genogram-leaf ${genogramPersonCardClass(branch.person.gender)}${branch.person.deathDate ? ' deceased' : ''}${appearance.branchColors[branch.person.id] ? ' has-branch-highlight' : ''}${selectedNodeId === `solo-${branch.person.id}` ? ' is-selected' : ''}`} data-person-id={branch.person.id} onClickCapture={(event) => { event.preventDefault(); onSelectNode(`solo-${branch.person.id}`); }} style={{ ...personAppearanceStyle(appearance.personColors[branch.person.id]), ...branchAppearanceStyle(appearance.branchColors[branch.person.id]), ...generationStyle(branch.person.birthDate, showGenerationCohorts, generationCohorts) }}>
       {showGenerationCohorts && cohortForYear(branch.person.birthDate, generationCohorts) && <span className="genogram-cohort-label">{cohortForYear(branch.person.birthDate, generationCohorts)!.name}</span>}
-      <button type="button" className="genogram-name-button" onClick={(event) => {
+      <button type="button" className="genogram-name-button" style={{ fontSize: fitNameFontSize(genogramPersonName(branch.person, hideLastNames), 122, 20, 14) }} onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
         setEditing(true);

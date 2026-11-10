@@ -283,8 +283,8 @@ h1 { max-width: 720px; margin-bottom: 20px; font-family: Georgia, 'Times New Rom
 .genogram-person.male { width: 148px; height: 148px; min-height: 148px; flex-basis: 148px; border-radius: 3px; }
 .genogram-person.nonbinary { border-style: dashed; border-radius: 12px; }
 .genogram-person.unknown { border-style: dotted; border-radius: 8px; }
-.genogram-person strong { max-width: 100%; color: #31483d; font-size: 16px; overflow-wrap: anywhere; }
-.genogram-name-button { max-width: 100%; padding: 0; border: 0; background: transparent; color: #31483d; font: inherit; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; text-align: center; cursor: pointer; }
+.genogram-person strong { max-width: 100%; color: #31483d; font-size: 20px; overflow-wrap: anywhere; }
+.genogram-name-button { max-width: 100%; padding: 0; border: 0; background: transparent; color: #31483d; font: inherit; font-size: 20px; font-weight: 700; line-height: 1.12; overflow-wrap: anywhere; text-align: center; cursor: pointer; }
 .genogram-name-button:hover { color: #397b67; text-decoration: underline; text-underline-offset: 2px; }
 .genogram-name-button:focus-visible { border-radius: 2px; outline: 2px solid #397b67; outline-offset: 2px; }
 .genogram-person small { color: var(--muted); font-size: 10px; }

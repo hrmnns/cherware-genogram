@@ -1,6 +1,7 @@
 import type { FamilyTreeGroup, FamilyTreePerson, GenogramDetail } from '../domain/savedGenogram';
 import type { GenogramAppearance } from './appearance';
 import type { GenerationCohort } from './viewPreferences';
+import { fitNameFontSize, wrapName } from './nameLayout';
 
 const cardWidth = 176;
 const cardHeight = 154;
@@ -190,13 +191,25 @@ export function createGenogramPrintSvg(
           : `<rect x="${cx - 74}" y="${y + 3}" width="148" height="148" rx="${person.gender === 'unknown' ? 8 : 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.6"${person.gender === 'unknown' ? ' stroke-dasharray="2 3"' : ''} />`;
       body.push(shape);
       const name = [person.name, ...(hideLastNames ? [] : [person.familyName])].filter(Boolean).join(' ');
-      const lines = wrapText(name, 19);
-      const lineHeight = 20;
-      const textTop = y + cardHeight / 2 - (lines.length * lineHeight + 30) / 2 + 16;
-      if (cohort) text(cx, y + 22, cohort.name, 8, 700, cohortColor ?? '#52685b');
-      lines.forEach((line, index) => text(cx, textTop + index * lineHeight, line, 15, 700, '#31483d'));
       const dates = [person.birthDate ? `geb. ${dateLabel(person.birthDate, person.birthDatePrecision)}` : '', person.deathDate ? `gest. ${dateLabel(person.deathDate, person.deathDatePrecision)}` : ''].filter(Boolean);
-      dates.forEach((date, index) => text(cx, textTop + lines.length * lineHeight + index * 14, date, 10, 400, '#66756d'));
+      let nameFontSize = fitNameFontSize(name, 124, 22, 14);
+      let lines = wrapName(name, Math.floor(124 / (nameFontSize * 0.62)));
+      const availableNameHeight = cardHeight - (cohort ? 12 : 0) - (dates.length ? 3 + dates.length * 13 : 0) - 8;
+      while (lines.length * nameFontSize * 1.16 > availableNameHeight && nameFontSize > 7) {
+        nameFontSize = Math.max(7, nameFontSize - 0.5);
+        lines = wrapName(name, Math.floor(124 / (nameFontSize * 0.62)));
+      }
+      const lineHeight = nameFontSize * 1.16;
+      const cohortHeight = cohort ? 12 : 0;
+      const dateHeight = dates.length ? 3 + dates.length * 13 : 0;
+      let textTop = y + (cardHeight - cohortHeight - lines.length * lineHeight - dateHeight) / 2;
+      if (cohort) {
+        text(cx, textTop + 8, cohort.name, 8, 700, cohortColor ?? '#52685b');
+        textTop += cohortHeight;
+      }
+      lines.forEach((line, index) => text(cx, textTop + nameFontSize + index * lineHeight, line, nameFontSize, 700, '#31483d'));
+      textTop += lines.length * lineHeight + (dates.length ? 3 : 0);
+      dates.forEach((date, index) => text(cx, textTop + 10 + index * 13, date, 11, 400, '#66756d'));
       personX += cardWidth + partnerGap;
     }
     if (partnerCenters.length > 1) {
@@ -275,18 +288,6 @@ function cohortForPrintYear(birthDate: string | null, cohorts: GenerationCohort[
 
 function escapeXml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]!);
-}
-
-function wrapText(value: string, max: number): string[] {
-  const words = value.split(/\s+/);
-  const lines: string[] = [];
-  let line = '';
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > max && line) { lines.push(line); line = word; } else line = next;
-  }
-  if (line) lines.push(line);
-  return lines.length ? lines.slice(0, 4) : [''];
 }
 
 function blend(foreground: string, background: string, amount: number): string {
